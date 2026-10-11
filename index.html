@@ -3676,9 +3676,9 @@ function hVote(from,to,vid){
 /* Cuenta los votos y decide el resultado: empate, eliminado (y si ganan inocentes/impostores o sigue
    la ronda), o nadie ha votado. Es pura (no toca S ni SOLO) para que la compartan la sala en línea y el
    modo de un solo móvil. votesMap es {desde: hacia}. */
-function computeVoteResult(alive,cand,tie,votesMap,dead,imps){
+function computeVoteResult(alive,cand,tie,votesMap,dead,imps,voters){
   const counts={};cand.forEach(c=>counts[c]=0);
-  for(const f in votesMap){const to=votesMap[f],from=+f;if(alive.includes(from)&&cand.includes(to)&&to!==from)counts[to]++}
+  for(const f in votesMap){const to=votesMap[f],from=+f;if((voters||alive).includes(from)&&cand.includes(to)&&to!==from)counts[to]++}
   const max=Math.max(...cand.map(c=>counts[c]));
   const top=max>0?cand.filter(c=>counts[c]===max):[];
   const res={counts,top,elim:null,out:'none'};
@@ -5169,8 +5169,8 @@ function soloVoteSecretPick(slot){
   });
   show('s-solo-vote');
 }
-function soloCloseVote(votesMap,alive){
-  const cr=computeVoteResult(alive,SOLO.vote.cand,SOLO.vote.tie,votesMap,SOLO.dead,soloImps());
+function soloCloseVote(votesMap,voters){
+  const cr=computeVoteResult(soloAlive(),SOLO.vote.cand,SOLO.vote.tie,votesMap,SOLO.dead,soloImps(),voters);
   const res={id:'r'+Date.now()+Math.random(),...cr};
   if(res.elim!=null){
     SOLO.dead=[...SOLO.dead,res.elim];
