@@ -2,7 +2,7 @@
 // (no llama a las funciones internas salvo para leer el estado, nunca para saltarse pasos).
 
 async function goHome(page) {
-  await page.goto('/');
+  await page.goto(process.env.TEST_PATH || '/');
 }
 
 async function openSoloSetup(page) {

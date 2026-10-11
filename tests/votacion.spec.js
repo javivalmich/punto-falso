@@ -26,7 +26,7 @@ test.describe('Regla de fin de ronda (función compartida)', () => {
   ];
   for (const [n, k, elimImp, out] of cases) {
     test(`${n} jugadores / ${k} impostor(es), eliminan ${elimImp ? 'impostor' : 'inocente'} → ${out}`, async ({ page }) => {
-      await page.goto('/');
+      await page.goto(process.env.TEST_PATH || '/');
       const r = await page.evaluate(({ n, k, elimImp }) => {
         const alive = Array.from({ length: n }, (_, i) => i + 1);
         const imps = alive.slice(0, k);
@@ -40,7 +40,7 @@ test.describe('Regla de fin de ronda (función compartida)', () => {
     });
   }
   test('voto en voz alta: solo votan los "votantes", los vivos cuentan para el fin de ronda', async ({ page }) => {
-    await page.goto('/');
+    await page.goto(process.env.TEST_PATH || '/');
     const out = await page.evaluate(() => computeVoteResult([1, 2, 3, 4], [1, 2, 3, 4], false, { 0: 3 }, [], [1], [0]).out);
     expect(out).toBe('cont');
   });
