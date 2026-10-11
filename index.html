@@ -178,7 +178,7 @@ input.codein::placeholder{color:var(--line)}
 .small{font-size:.95rem;font-weight:600;color:rgba(255,255,255,.72)}
 .word{color:#f5f5f7;font-weight:900;line-height:1.15;margin:6px 0 8px;overflow-wrap:break-word;letter-spacing:.01em;max-width:100%}
 .cat{color:var(--red);font-weight:700;letter-spacing:.08em;font-size:.8rem}
-.impword{font-weight:900;font-size:2.6rem;color:#fff;line-height:1;letter-spacing:.06em;margin:2px 0 14px}
+.impword{font-weight:900;font-size:2.6rem;color:var(--red);line-height:1;letter-spacing:.06em;margin:2px 0 14px}
 .hint{display:inline-block;background:#24242b;color:#fff;font-weight:800;font-size:1.3rem;padding:9px 20px;border-radius:14px;margin-top:4px;max-width:100%;overflow-wrap:break-word}
 .imp .note{margin-top:12px;font-weight:600;color:#fff}
 @media (prefers-reduced-motion:no-preference){
@@ -469,11 +469,11 @@ body.wk-compact .wrap.game{padding-bottom:calc(min(52vh,400px) + 24px)}
         <div class="step"><button id="k2Minus" aria-label="Menos impostores">−</button><output id="k2Val">1</output><button id="k2Plus" aria-label="Más impostores">+</button></div>
       </div>
       <div class="row" style="flex-direction:column;align-items:stretch;gap:10px">
-        <div><div class="lbl">Pista al impostor</div><div class="sub" id="hint2Sub">Ve solo la categoría</div></div>
+        <div><div class="lbl">Pista al impostor</div><div class="sub" id="hint2Sub">Ve una palabra suelta y floja</div></div>
         <div class="seg" id="hint2Seg" role="radiogroup" aria-label="Nivel de pista para el impostor">
           <button type="button" data-v="0" aria-pressed="false">Sin pista</button>
-          <button type="button" data-v="1" aria-pressed="true">Categoría</button>
-          <button type="button" data-v="2" aria-pressed="false">Pista vaga</button>
+          <button type="button" data-v="1" aria-pressed="false">Categoría</button>
+          <button type="button" data-v="2" aria-pressed="true">Pista vaga</button>
         </div>
       </div>
       <div class="row">
@@ -491,6 +491,7 @@ body.wk-compact .wrap.game{padding-bottom:calc(min(52vh,400px) + 24px)}
   </section>
 
   <section class="screen" id="s-lobby">
+    <button class="back" id="lbBack">‹ Volver</button>
     <div class="gtop"><h2>Sala de espera</h2><button class="menubtn" id="lobbyMenu" aria-label="Menú">☰</button></div>
     <div class="panel codebox">
       <p style="margin:0 0 4px">Código de la sala</p>
@@ -508,6 +509,7 @@ body.wk-compact .wrap.game{padding-bottom:calc(min(52vh,400px) + 24px)}
   </section>
 
   <section class="screen" id="s-wait">
+    <button class="back" id="wtBack">‹ Volver</button>
     <div class="gtop"><h2>Entrarás en la siguiente ronda</h2><button class="menubtn" id="waitMenu" aria-label="Menú">☰</button></div>
     <p class="hint-line" id="wtMsg"></p>
   </section>
@@ -527,11 +529,11 @@ body.wk-compact .wrap.game{padding-bottom:calc(min(52vh,400px) + 24px)}
         <div class="step"><button id="kMinus" aria-label="Menos impostores">−</button><output id="kVal">1</output><button id="kPlus" aria-label="Más impostores">+</button></div>
       </div>
       <div class="row" style="flex-direction:column;align-items:stretch;gap:10px">
-        <div><div class="lbl">Pista al impostor</div><div class="sub" id="hintSub">Ve solo la categoría</div></div>
+        <div><div class="lbl">Pista al impostor</div><div class="sub" id="hintSub">Ve una palabra suelta y floja</div></div>
         <div class="seg" id="hintSeg" role="radiogroup" aria-label="Nivel de pista para el impostor">
           <button type="button" data-v="0" aria-pressed="false">Sin pista</button>
-          <button type="button" data-v="1" aria-pressed="true">Categoría</button>
-          <button type="button" data-v="2" aria-pressed="false">Pista vaga</button>
+          <button type="button" data-v="1" aria-pressed="false">Categoría</button>
+          <button type="button" data-v="2" aria-pressed="true">Pista vaga</button>
         </div>
       </div>
       <div class="row">
@@ -3081,6 +3083,7 @@ function b64(u){let s='';for(let i=0;i<u.length;i+=0x8000)s+=String.fromCharCode
 function deb64(s){const b=atob(s),u=new Uint8Array(b.length);for(let i=0;i<b.length;i++)u[i]=b.charCodeAt(i);return u}
 /* Sonido y vibración: interruptores guardados en este móvil (por defecto encendidos) */
 const SETTINGS={sound:lsGet('impostor-sound',1)!==0,vibra:lsGet('impostor-vibra',1)!==0};
+const VIB_INI=[80,60,80],VIB_VOTO=[50,40,50]; /* partida lista / votación abierta: iguales para todos */
 const vibra=p=>{if(!SETTINGS.vibra)return;try{navigator.vibrate&&navigator.vibrate(p)}catch(e){}};
 
 /* ---------- Sonidos cortos del juego ----------
@@ -3144,12 +3147,11 @@ const EN_LOCAL=/^(localhost|127\.0\.0\.1)$/.test(location.hostname);
 const QS=new URLSearchParams(location.search);
 const HOST_GRACE=(EN_LOCAL&&(+QS.get('grace'))*1000)||30000; /* segundos sin anfitrión antes de relevarlo */
 
-let setup={n:0,k:1,hint:1,mask:ALL_MASK,secret:false};
-let rs={k:1,hint:1,mask:ALL_MASK,remote:false}; // ajustes de la sala en línea
+let setup={n:0,k:1,hint:2,mask:ALL_MASK,secret:false};
+let rs={k:1,hint:2,mask:ALL_MASK,remote:false}; // ajustes de la sala en línea
 let names=[];try{names=JSON.parse(localStorage.getItem('impostor-names')||'[]').map(cleanName).filter(Boolean).slice(0,18)}catch(e){names=[]}
 let game=null; // partida en marcha: {code,cfg,names,me,round,creator,remote,legacy}
 let ROOM=null; // sala en línea de este móvil: {code,name,creator,remote,joined,set}
-let vibrated=0;
 function save(){try{if(game&&game.legacy)localStorage.setItem('impostor-v2',JSON.stringify({code:game.code,names:game.names,me:game.me,round:game.round,creator:!!game.creator,remote:!!game.remote}));else if(!ROOM)localStorage.removeItem('impostor-v2')}catch(e){}}
 function load(){try{const s=JSON.parse(localStorage.getItem('impostor-v2')||'null');if(s&&s.code&&Array.isArray(s.names)){const cfg=decode(s.code);if(cfg&&s.names.length===cfg.n&&s.me>=1&&s.me<=cfg.n&&s.round>=1)return {code:s.code,cfg,names:s.names,me:s.me,round:s.round,creator:!!s.creator,remote:!!s.remote,legacy:true}}}catch(e){}return null}
 function saveNames(){try{localStorage.setItem('impostor-names',JSON.stringify(names))}catch(e){}}
@@ -3414,7 +3416,7 @@ function okState(m){
   return !!(m.cfg&&Number.isInteger(m.cfg.seed)&&Array.isArray(m.pl)&&m.pl.length>=3&&m.pl.every(p=>p&&typeof p.p==='string'&&typeof p.n==='string'));
 }
 function newer(m,c){if(!c)return true;if(m.ep!==c.ep)return m.ep>c.ep;if(m.host!==c.host)return m.host<c.host;return m.sq>c.sq}
-const defSet=()=>({k:1,hint:1,mask:ALL_MASK,remote:false});
+const defSet=()=>({k:1,hint:2,mask:ALL_MASK,remote:false});
 /* rank se conserva mientras dure la sala (no se reinicia al volver a la sala de espera ni al empezar otra partida) */
 function lobbyState(set){return {ep:(S?S.ep:0)+1,sq:0,host:PID,ph:'lobby',set:{...defSet(),...set},cfg:null,pl:null,ban:[],pend:[],acc:[],left:[],round:1,dead:[],vt:null,res:null,prop:null,rank:S?cloneRank(S.rank):{}}}
 /* Construye la partida (game) a partir del estado de la sala */
@@ -3577,9 +3579,9 @@ function hVote(from,to,vid){
 /* Cuenta los votos y decide el resultado: empate, eliminado (y si ganan inocentes/impostores o sigue
    la ronda), o nadie ha votado. Es pura (no toca S ni SOLO) para que la compartan la sala en línea y el
    modo de un solo móvil. votesMap es {desde: hacia}. */
-function computeVoteResult(alive,cand,tie,votesMap,dead,imps){
+function computeVoteResult(alive,cand,tie,votesMap,dead,imps,voters){
   const counts={};cand.forEach(c=>counts[c]=0);
-  for(const f in votesMap){const to=votesMap[f],from=+f;if(alive.includes(from)&&cand.includes(to)&&to!==from)counts[to]++}
+  for(const f in votesMap){const to=votesMap[f],from=+f;if((voters||alive).includes(from)&&cand.includes(to)&&to!==from)counts[to]++}
   const max=Math.max(...cand.map(c=>counts[c]));
   const top=max>0?cand.filter(c=>counts[c]===max):[];
   const res={counts,top,elim:null,out:'none'};
@@ -3699,7 +3701,7 @@ function onEnterRoom(){
   if(ROOM.remote&&!lsGet('impostor-wk-'+ROOM.code)){lsSet('impostor-wk-'+ROOM.code,1);setTimeout(()=>{if(ROOM&&!WK.abierto)WK.abrir()},500)}
   if(WK.inapp())toast('Estás dentro de otra app: el micrófono no irá. Abre el enlace en Safari o Chrome.');
 }
-function onEnterGame(){cardKey='';vibrated=0;lastRoomPhase='';lastVoted={id:'',n:0};lockScreen()}
+function onEnterGame(){cardKey='';lastRoomPhase='';lastVoted={id:'',n:0};lockScreen()}
 let cardKey='';
 /* Pinta una tarjeta (palabra o impostor) en el elemento dado. La usan tanto la partida en línea/legacy
    como el modo de un solo móvil, para no duplicar la asignación de palabra ni el diseño de la tarjeta. */
@@ -3756,10 +3758,13 @@ function watchPhaseSounds(){
   if(mode()!=='room'||!S)return;
   if(S.ph!==lastRoomPhase){
     const prev=lastRoomPhase;lastRoomPhase=S.ph;
-    if(S.ph==='word'){SND.play('roundStart');if(prev)vibra(50)}
-    else if(S.ph==='vote'){SND.play('voteOpen');vibra([50,40,50])}
+    if(S.ph==='word')SND.play('roundStart');
+    else if(S.ph==='vote')SND.play('voteOpen');
     else if(S.ph==='reveal')SND.play('voteClose');
   }
+  /* Vibración: aviso de partida lista (una vez por partida y ronda, aunque se recargue) y de votación abierta (una vez por votación, también si se repite por empate) */
+  if(S.ph==='word'&&S.cfg){const k='ini'+S.cfg.seed+'.'+S.round;if(!seenRes(k)){markRes(k);vibra(VIB_INI,true)}}
+  if(S.ph==='vote'&&S.vt&&!seenRes('v'+S.vt.id)){markRes('v'+S.vt.id);if(!(S.dead||[]).includes(game.me))vibra(VIB_VOTO,true)}
   if(S.ph==='vote'&&S.vt){
     if(S.vt.id!==lastVoted.id)lastVoted={id:S.vt.id,n:S.vt.voted.length};
     else if(S.vt.voted.length>lastVoted.n){lastVoted.n=S.vt.voted.length;SND.play('vote')}
@@ -3914,6 +3919,18 @@ async function shareRoom(){
   try{if(navigator.share){await navigator.share({title:'Punto Falso',text:`Entra en mi sala de Punto Falso (código ${ROOM.code}):`,url});return}}catch(e){if(e&&e.name==='AbortError')return}
   try{await navigator.clipboard.writeText(url);toast('Enlace copiado')}catch(e){toast('No se pudo copiar. Que escaneen el QR.')}
 }
+/* «‹ Volver» en la sala de espera: pide confirmación. Al salir, la sala sigue sin ti: si eras el anfitrión, otro jugador conectado lo pasa a ser
+   (takeover por presencia) y, si no queda nadie, la sala deja de existir. */
+function salirSalaSheet(){
+  if(!ROOM)return;
+  const otros=connectedList(NET.R||{}).filter(e=>e.p!==PID).length;
+  const nota=iAmHost()?(otros>0?'Como eres el anfitrión, otro jugador pasará a serlo.':'Eres el único en la sala: se cerrará.'):'Podrás volver a entrar con el código de la sala.';
+  sheet(`<h3>¿Salir de la sala?</h3><p>${nota}</p><button class="act" id="slYes">Salir</button><button class="link" id="slNo">Quedarme</button>`,()=>{
+    $('slNo').onclick=closeSheet;
+    $('slYes').onclick=()=>{closeSheet();if(ROOM)dropRoom();phHtml='';show('s-home')};
+  });
+}
+$('lbBack').onclick=salirSalaSheet;$('wtBack').onclick=salirSalaSheet;
 function renderWait(){
   if(!ROOM||!$('s-wait').classList.contains('on'))return;
   const acc=S&&S.acc.some(p=>p.p===PID);
@@ -3934,7 +3951,7 @@ CATS.forEach((c,i)=>{const b=document.createElement('button');b.className='chip'
 $('k2Minus').onclick=()=>{rs.k--;renderRoomSetup()};$('k2Plus').onclick=()=>{rs.k++;renderRoomSetup()};
 bindHintSeg('hint2Seg',v=>{rs.hint=v;renderRoomSetup()});$('remote2Sw').onclick=()=>{rs.remote=!rs.remote;renderRoomSetup()};
 $('allCats2').onclick=()=>{rs.mask=rs.mask===ALL_MASK?0:ALL_MASK;renderRoomSetup()};
-$('goCreate').onclick=()=>{$('createErr').textContent='';fillMyName('myName');renderRoomSetup();show('s-create')};
+$('goCreate').onclick=()=>{rs.remote=false;$('createErr').textContent='';fillMyName('myName');renderRoomSetup();show('s-create')};
 $('doCreateRoom').onclick=async()=>{
   const name=cleanName($('myName').value),err=$('createErr'),btn=$('doCreateRoom');
   if(!name){err.textContent='Escribe tu nombre (de 1 a 14 caracteres).';return}
@@ -4063,8 +4080,7 @@ function enterGame(){cardKey='';show('s-game');renderAll();lockScreen()}
 function setCardOpen(cardEl,on,vibKey){
   const isImp=cardEl.classList.contains('imp');
   cardEl.classList.toggle('open',on);
-  /* Anti-chivato: el mismo fondo, la misma vibración y los mismos tiempos para todos los papeles */
-  if(on&&vibrated!==vibKey){vibrated=vibKey;vibra([90,60,90,60,220])}
+  /* Anti-chivato: el mismo fondo y los mismos tiempos para todos los papeles; abrir la tarjeta no vibra */
   return isImp;
 }
 function bindHoldToReveal(cardEl,onOpen){
@@ -4082,7 +4098,7 @@ function reveal(on){
 bindHoldToReveal($('card'),reveal);
 
 /* ---------- Revelación ---------- */
-let REV={id:null,t0:0,tm:null,html:'',vib:false,vibOut:false,vib3:false,vibEnd:false,advanced:false};
+let REV={id:null,t0:0,tm:null,html:'',vib:false,vibEnd:false,advanced:false};
 const seenRes=id=>{try{return (sessionStorage.getItem('impostor-seen')||'').split(',').includes(id)}catch(e){return false}};
 const markRes=id=>{try{sessionStorage.setItem('impostor-seen',((sessionStorage.getItem('impostor-seen')||'')+','+id).slice(-60))}catch(e){}};
 function outText(r,imps,room){
@@ -4104,7 +4120,7 @@ function renderReveal(){
     return;
   }
   const r=S.res,imps=impsNow(),nm=i=>esc(game.names[i-1]);
-  if(REV.id!==r.id){REV.id=r.id;REV.t0=seenRes(r.id)?Date.now()-99999:Date.now();REV.vib=false;REV.vibOut=false;REV.vib3=false;REV.vibEnd=false;REV.advanced=false;markRes(r.id)}
+  if(REV.id!==r.id){REV.id=r.id;REV.t0=seenRes(r.id)?Date.now()-99999:Date.now();REV.vib=false;REV.vibEnd=false;REV.advanced=false;markRes(r.id)}
   const age=Date.now()-REV.t0,stage=age<2200?0:age<4400?1:age<6000?2:3;
   const AUTO_AT=12000; /* 6s de animación + 6s de cuenta atrás visible antes de pasar solo de ronda */
   clearTimeout(REV.tm);
@@ -4128,7 +4144,6 @@ function renderReveal(){
     if(stage>=2&&!REV.vib){
       REV.vib=true;if(age<7000)vibra(isImp?[90,60,90,60,220]:[60]);
       SND.play(isImp?'revealImp':'revealInn');
-      if(r.elim===game.me&&!REV.vibOut){REV.vibOut=true;setTimeout(()=>vibra([110,70,110,70,110,70,260]),260)}
     }
     if(stage===3){
       if(!r.shortcut){
@@ -4142,7 +4157,6 @@ function renderReveal(){
       }else h+=`<p style="margin-top:12px">${esc(outText(r,imps,true))}</p>`;
       const lab=r.out==='tie'?'Repitiendo la votación':r.out==='inn'||r.out==='imp'?`Ronda ${S.round+1}`:'Seguís jugando';
       const secs=Math.max(0,Math.ceil((AUTO_AT-age)/1000));
-      if(secs===3&&!REV.vib3){REV.vib3=true;vibra([60,50,60])}
       h+=`<p class="wait">${lab} en ${secs}…</p>`;
       if(host)h+=`<button class="act" data-a="now">Ir ya</button>`;
       if(age>=AUTO_AT&&host&&!REV.advanced){REV.advanced=true;hAfter();return}
@@ -4853,8 +4867,8 @@ function soloStart(nm,cfg,voteMode){
   if(ROOM)dropRoom();
   const rank={};nm.forEach((n,i)=>ensureRankEntry(rank,String(i+1),n));
   SOLO={names:nm,cfg,round:1,dead:[],voteMode,rank,phase:'deal',deal:{idx:0},vote:null,res:null};
-  game=soloGame();vibrated=0;cardKey='';
-  soloSave();lockScreen();soloDealStep();
+  game=soloGame();cardKey='';
+  soloSave();lockScreen();vibra(VIB_INI,true);soloDealStep();
 }
 function soloDealStep(){
   SOLO.phase='deal';soloSave();
@@ -4927,7 +4941,7 @@ function soloStartVote(cand,tie){
   cand=cand||soloAlive();
   /* los candidatos (a quién se puede votar) pueden ser solo los empatados, pero votan todos los vivos */
   SOLO.vote={cand,tie:!!tie,ballots:{},order:soloAlive(),idx:0};
-  SOLO.phase='vote';SOLO.voiceChoice=null;soloSave();
+  SOLO.phase='vote';SOLO.voiceChoice=null;soloSave();vibra(VIB_VOTO,true);
   if(SOLO.voteMode==='secreta')soloVoteSecretNext();else soloRenderVoiceVote();
 }
 function soloRenderVoiceVote(){
@@ -4985,8 +4999,8 @@ function soloVoteSecretPick(slot){
   });
   show('s-solo-vote');
 }
-function soloCloseVote(votesMap,alive){
-  const cr=computeVoteResult(alive,SOLO.vote.cand,SOLO.vote.tie,votesMap,SOLO.dead,soloImps());
+function soloCloseVote(votesMap,voters){
+  const cr=computeVoteResult(soloAlive(),SOLO.vote.cand,SOLO.vote.tie,votesMap,SOLO.dead,soloImps(),voters);
   const res={id:'r'+Date.now()+Math.random(),...cr};
   if(res.elim!=null){
     SOLO.dead=[...SOLO.dead,res.elim];
@@ -5059,7 +5073,7 @@ function soloAfter(){
 }
 function soloRestore(){
   const s=soloLoadSaved();if(!s)return false;
-  SOLO=s;SOLO.voiceChoice=null;game=soloGame();vibrated=0;cardKey='';lockScreen();
+  SOLO=s;SOLO.voiceChoice=null;game=soloGame();cardKey='';lockScreen();
   if(!SOLO.rank){SOLO.rank={};SOLO.names.forEach((n,i)=>ensureRankEntry(SOLO.rank,String(i+1),n))}
   if(SOLO.phase==='deal')soloDealStep();
   else if(SOLO.phase==='vote'&&SOLO.vote){
