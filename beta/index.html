@@ -386,6 +386,22 @@ html.en-app .wk-caja{height:min(84dvh,700px);max-height:100%;overflow-y:auto;-we
 html.en-app #wkLista{min-height:72px}
 @media (max-height:740px){html.en-app #wkMicNota,html.en-app #wkDiag,html.en-app #wkNormas{display:none}}
 html.en-app #wk.kb .wk-caja{height:100%;padding-bottom:14px}
+/* App iOS: micro denegado en Ajustes (iOS no vuelve a preguntar). El aviso es compacto para que el botón de hablar y el campo de texto sigan a la vista */
+#wkMicOff{background:#0e0e11;color:#fff;border:2px solid var(--red);border-radius:14px;padding:8px 12px;margin-top:8px;font-size:.8rem;font-weight:600;line-height:1.3}
+#wkMicOff[hidden]{display:none}
+#wkMicOff p{margin:0}
+#wkMicOff button{margin-top:6px;padding:7px 14px;font-size:.88rem;color:#fff;border-color:#4a4a50}
+html.en-app #wk.mic-off #wkLista{min-height:0}
+html.en-app #wk.mic-off :is(#wkMicNota,#wkDiag,#wkNormas){display:none}
+html.en-app #wk.kb #wkMicOff{display:none}
+/* App iOS, sala de espera (compacto): un poco más alto y sin los botones que repiten la ✕ (Volver) o la información (quién está), para que quepan el campo y el botón de hablar */
+html.en-app #wk.compact .wk-caja{height:min(60dvh,460px)}
+html.en-app body.wk-compact .wrap.game{padding-bottom:calc(min(60dvh,460px) + 24px)}
+html.en-app #wk.compact :is(.wk-call,#wkVolver){display:none}
+html.en-app #wk.compact.mic-off #wkDesc{display:none}
+html.en-app #wk.compact #wkLista{min-height:40px}
+html.en-app #wk.mic-off #wkVolver{display:none}
+html.en-app #wk.compact.mic-off #wkLista{min-height:0}
 html.en-app #wk.kb :is(.wk-call,#wkVolver,#wkDesc,#wkAviso,#wkMicNota,#wkDiag,#wkNormas){display:none}
 
 /* hojas de confirmación y avisos por encima del walkie */
@@ -648,6 +664,7 @@ html.en-app #wk.kb :is(.wk-call,#wkVolver,#wkDesc,#wkAviso,#wkMicNota,#wkDiag,#w
     <div class="wk-call"><span id="wkQuienes"></span></div>
     <button class="act" id="wkVolver">Volver con walkie abierto</button><button class="act sec" id="wkDesc">Desconectar walkie</button>
     <div id="wkAviso"></div>
+    <div id="wkMicOff" hidden><p>Has desactivado el micrófono. Actívalo en Ajustes → Punto Falso → Micrófono para hablar por el walkie. Los mensajes de texto siguen funcionando.</p><button class="act sec" id="wkAjustes">Abrir Ajustes</button></div>
     <div id="wkLista"></div>
     <div class="wk-escribe"><input id="wkTxt" maxlength="200" placeholder="Escribe un mensaje" autocomplete="off" aria-label="Mensaje para el grupo"><button id="wkEnviar">Enviar</button></div>
     <button id="wkPtt"><span id="wkPttTxt">Mantén para hablar</span><i id="wkNivel"></i></button>
@@ -4460,12 +4477,21 @@ const WK={
     this.stream=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true,noiseSuppression:true,autoGainControl:true}});this.src=null;
     lsSet('impostor-micok',1);$('wkMicNota').hidden=true;
   },
+  /* App iOS: si el micro está denegado, iOS no vuelve a preguntar; no se intenta grabar (el botón queda desactivado y se avisa) */
+  denegado:false,
+  async reintentaMicro(){
+    if(!(EN_APP&&this.denegado&&this.abierto)||this._sonda)return;this._sonda=true;
+    try{const s=await navigator.mediaDevices.getUserMedia({audio:true});s.getTracks().forEach(t=>t.stop());this.denegado=false}catch(e){}
+    this._sonda=false;this.pinta()
+  },
   async empieza(){
+    if(EN_APP&&this.denegado){this.pinta();return}
     const no=this.noPuede();if(no){this.estado(no);return}
     if(this.rec)return;const c=this.ctx();
     const r=this.rec={id:uid(10),n:0,t0:Date.now(),pico:0,partes:[],arrancando:true};
     this.btn(true);this.estado('Abriendo micro…');
     try{await this.micro()}catch(e){if(this.rec===r)this.rec=null;this.btn(false);this.nivel(0);
+      if(EN_APP&&e&&(e.name==='NotAllowedError'||e.name==='PermissionDeniedError')){this.denegado=true;this.estado('');this.diag();this.pinta();return}
       this.estado(this.inapp()?'Aquí el micro está bloqueado: abre el enlace en Safari o Chrome. El texto sí funciona.':(e&&(e.name==='NotAllowedError'||e.name==='AbortError'))?'Toca para activar el micro. Si Safari vuelve a pedir permiso, pulsa Permitir.':'No hay acceso al micro ('+(e.message||e.name)+'). El texto sí funciona.');this.diag();return}
     if(this.rec!==r)return;
     r.arrancando=false;r.t0=Date.now();this.ruido(.07,.1);this.diag();
@@ -4576,7 +4602,8 @@ const WK={
     const av=$('wkAviso'),ia=this.inapp();av.classList.toggle('on',ia);
     if(ia)av.textContent='Estás dentro de otra app (WhatsApp, Instagram…) y ahí el micrófono no funciona. Abre el enlace en Safari o Chrome. Los mensajes de texto sí funcionan.';
     const no=this.noPuede();if(!this.rec){if(no)this.estado(no);else if(this._no)this.estado('')}this._no=no;
-    $('wkPtt').disabled=!!no&&!this.rec;$('wkEnviar').disabled=!!no;$('wkTxt').disabled=!!no;
+    const off=EN_APP&&this.denegado;$('wkMicOff').hidden=!off;$('wk').classList.toggle('mic-off',off);
+    $('wkPtt').disabled=(!!no||off)&&!this.rec;$('wkEnviar').disabled=!!no;$('wkTxt').disabled=!!no;
     const h=els.length?els.map(e=>{
       const nom=`${avImg(lookOfPid(e.p),'sm')} <b>${esc(pidName(e.p,e.n))}</b>`;
       const fl=e.p!==PID?`<button class="flag" data-p="${esc(e.p)}" data-n="${esc(pidName(e.p,e.n))}" aria-label="Bloquear o reportar a ${esc(pidName(e.p,e.n))}">⚑</button>`:'';
@@ -4585,11 +4612,13 @@ const WK={
     const L=$('wkLista');if(L._h!==h){const abajo=L.scrollHeight-L.scrollTop-L.clientHeight<40;L._h=h;L.innerHTML=h;if(abajo||!L._ini){L.scrollTop=L.scrollHeight;L._ini=true}}
   },
   modo(){const cur=document.querySelector('.screen.on'),c=!!(this.abierto&&cur&&cur.id!=='s-game');$('wk').classList.toggle('compact',c);document.body.classList.toggle('wk-compact',c)},
-  abrir(){if(!(ROOM&&ROOM.remote))return;this.off=false;if(!this.enLlamada)this.entrarLlamada();this.abierto=true;$('wk').classList.add('on');ssSet('impostor-wkopen-'+wkKey(),1);this.ctx();this.diag();$('wkLista')._ini=false;this.modo();this.pinta()},
+  abrir(){if(!(ROOM&&ROOM.remote))return;this.off=false;if(!this.enLlamada)this.entrarLlamada();this.abierto=true;$('wk').classList.add('on');this.reintentaMicro();ssSet('impostor-wkopen-'+wkKey(),1);this.ctx();this.diag();$('wkLista')._ini=false;this.modo();this.pinta()},
   cerrar(){const era=this.abierto;this.abierto=false;$('wk').classList.remove('on');if(era)ssSet('impostor-wkopen-'+wkKey(),null);if(this.rec)this.para(true);this.hablando(null);this.modo();this.pinta()},
   init(){
     $('wkFab').onclick=()=>this.abrir();$('wkCerrar').onclick=()=>this.cerrar();$('wkFondo').onclick=()=>this.cerrar();
     $('wkVolver').onclick=()=>this.cerrar();
+    $('wkAjustes').onclick=async()=>{try{await window.Capacitor.Plugins.AudioSesion.abrirAjustes()}catch(e){toast('Abre Ajustes → Punto Falso → Micrófono')}};
+    document.addEventListener('visibilitychange',()=>{if(!document.hidden)this.reintentaMicro()});
     $('wkDesc').onclick=()=>{this.salirLlamada();this.cerrar()};
     const mandar=()=>{const i=$('wkTxt'),t=i.value.trim();if(!t||this.noPuede())return;
       this.chat.push({t:Date.now(),p:PID,n:myName(),txt:t});if(this.chat.length>80)this.chat.shift();this.guardaChat();bc('w',{id:uid(8),k:'txt',p:PID,nm:myName(),txt:t});i.value='';this.pinta()};
