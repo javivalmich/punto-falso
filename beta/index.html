@@ -3506,10 +3506,16 @@ function takeover(){
 function tick(){
   if(!ROOM)return;
   const now=Date.now();
-  if(NET.code&&NET.st==='down'&&NET.downAt&&now-NET.downAt>12000){NET.downAt=now;hardReconnect();return}
+  if(NET.code&&NET.st==='down'&&NET.downAt&&now-NET.downAt>3000){NET.downAt=now;hardReconnect();return}
   if(!netUp()||now<NET.grace)return;
   const R=roster();NET.R=R;
-  if(!R[PID])return;
+  if(!R[PID]){
+    /* mi presencia se ha perdido (p. ej. presence_state vacío tras una caída del canal): se vuelve a registrar */
+    if(!NET.sinYo)NET.sinYo=now;
+    else if(now-NET.sinYo>2000){NET.sinYo=now;NET.lastTrack='';netTrack()}
+    return;
+  }
+  NET.sinYo=0;
   if(iAmHost()){if(!NET.resumed){NET.resumed=true;resumeHost()}}
   else{
     if(hostPresent(R))NET.goneAt=0;
@@ -4042,11 +4048,19 @@ async function doJoinRoom(codeRaw,nameRaw){
   if(!name)return 'Escribe tu nombre (de 1 a 14 caracteres).';
   limpiaSolo();if(ROOM)dropRoom();
   S=null;
-  if(!await netJoinWait(code)){netLeave();return 'No hay conexión con el servidor. Prueba otra vez.'}
-  const t0=Date.now();
-  while(Date.now()-t0<4500&&!(S&&hostPresent(roster())))await sleep(200);
+  /* Hasta 3 intentos: si el canal cae (channel_crash) o la presencia llega vacía, se reconecta y se vuelve a esperar antes de decir que la sala no existe */
+  for(let intento=1;;intento++){
+    if(!await netJoinWait(code)){netLeave();return 'No hay conexión con el servidor. Prueba otra vez.'}
+    const t0=Date.now();
+    while(Date.now()-t0<4500&&!(S&&hostPresent(roster()))){
+      if(NET.st==='down'&&NET.downAt&&Date.now()-NET.downAt>1500)break; /* el canal se ha caído: no esperes a agotar el plazo */
+      await sleep(200);
+    }
+    if(S&&hostPresent(roster()))break;
+    if(intento>=3){netLeave();S=null;return 'No encuentro esa partida, revisa el código.'}
+    hardReconnect();
+  }
   const R=roster();
-  if(!S||!hostPresent(R)){netLeave();S=null;return 'No encuentro esa partida, revisa el código.'}
   if(S.ban.includes(PID)){netLeave();S=null;return 'El anfitrión te ha sacado de esa sala.'}
   const inList=S.pl&&S.pl.find(p=>p.p===PID);
   if(inList)name=inList.n; /* vuelve a su sitio con su nombre */
