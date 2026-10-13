@@ -129,10 +129,10 @@ test.describe('Sonido tras soltar el micro (app)', () => {
     expect(ev.slice(suelto + 1)).toEqual(['ambient', 'ambient']); // justo después y un instante más tarde
   });
 
-  test('en un solo móvil (sin micro) no se toca la sesión de audio de más al cambiar de pantalla', async ({ page }) => {
+  test('en un solo móvil (sin micro) no se vuelve a pedir la sesión de audio al cambiar de pantalla', async ({ page }) => {
     await page.addInitScript(puente);
     await page.goto('/');
     const ev = await page.evaluate(async () => { window.__ev = []; show('s-home'); show('s-home'); await new Promise((r) => setTimeout(r, 700)); return window.__ev; });
-    expect(ev).toEqual(['ambient', 'ambient']); // solo el de cerrar(), una vez por cambio de pantalla, como antes
+    expect(ev).toEqual([]); // el modo ya es ambient: no se vuelve a pedir a la sesión nativa en cada cambio de pantalla
   });
 });

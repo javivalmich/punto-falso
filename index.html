@@ -3230,15 +3230,17 @@ if(EN_APP)document.documentElement.classList.add('en-app');
 /* Sesión de audio. Los efectos son <audio> (WAV generados al vuelo) y el walkie usa Web Audio: WKWebView pisa la categoría nativa, así que se
    fija también con navigator.audioSession.type (iOS 16.4+): 'ambient' (respeta el silencio) y 'play-and-record' solo con el walkie abierto.
    La categoría nativa (plugin AudioSesion) queda de respaldo. El console.log es temporal, para comprobarlo en Xcode. */
-let audioTipo='';
-function audioModo(m){
+let audioTipo='',audioNativo='';
+function audioModo(m,forzar){
   const t=m==='walkie'?'play-and-record':'ambient';
   try{
     if(!EN_APP)return;
     if(navigator.audioSession&&navigator.audioSession.type!==t)navigator.audioSession.type=t;
     if(audioTipo!==t){audioTipo=t;console.log('AUDIO tipo='+(navigator.audioSession?navigator.audioSession.type:'no disponible (solo nativo)')+' (pedido '+t+')')}
   }catch(e){console.log('AUDIO tipo error '+e)}
-  try{const A=window.Capacitor.Plugins&&window.Capacitor.Plugins.AudioSesion;if(A)Promise.resolve(A.modo({modo:m})).catch(()=>{})}catch(e){}
+  /* La categoría nativa solo se toca si cambia el modo (o se fuerza, p. ej. al soltar el micro): show() la pide en cada cambio de pantalla y repetirla activaba la sesión sin parar */
+  if(!forzar&&audioNativo===m)return;
+  try{const A=window.Capacitor.Plugins&&window.Capacitor.Plugins.AudioSesion;if(A){audioNativo=m;Promise.resolve(A.modo({modo:m,forzar:!!forzar})).catch(()=>{})}}catch(e){}
 }
 audioModo('ambient');
 /* En la app el WebView se sirve desde capacitor://localhost: sin el !EN_APP, localhost valdría también ahí y los parámetros de pruebas (?sblib, ?grace) tendrían efecto */
@@ -4584,7 +4586,7 @@ const WK={
     this.btn(false);this.nivel(0);this.diag();
     /* App iOS: cerrar() pide «ambient» con el micro aún abierto y iOS puede dejar la sesión de audio en modo grabación (sonidos del juego bajos o mudos).
        Con el micro ya liberado se vuelve a fijar «ambient», y otra vez un instante después. Sin micro abierto (p. ej. un solo móvil) no hace nada. */
-    if(EN_APP&&tenia&&!this.abierto){audioModo('ambient');setTimeout(()=>{if(!WK.abierto&&!WK.stream)audioModo('ambient')},500)}
+    if(EN_APP&&tenia&&!this.abierto){audioModo('ambient',true);setTimeout(()=>{if(!WK.abierto&&!WK.stream)audioModo('ambient',true)},500)}
   },
   /* Sale de la llamada: corta micro y audio, y deja de recibir voz y mensajes hasta volver a entrar.
      No es salir de la partida: el walkie se puede reabrir después. */
