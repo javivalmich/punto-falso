@@ -392,6 +392,8 @@ body.red .sheet .act{background:var(--red)}
 #wk.compact .wk-caja{pointer-events:auto;height:min(52vh,400px);box-shadow:0 -10px 30px rgba(0,0,0,.5)}
 #wk.compact #wkDiag{display:none}
 body.wk-compact .wrap.game{padding-bottom:calc(min(52vh,400px) + 24px)}
+/* el botón flotante del micro no debe quedar sobre «Bloquear» ni «✕» de los últimos jugadores */
+body.wk-fab #lbList{padding-bottom:84px}
 /* App iOS: la hoja del walkie cabe en la pantalla real (dvh, zona segura) y, con el teclado, en el área visible */
 html.en-app .wk-caja{height:min(84dvh,700px);max-height:100%;overflow-y:auto;-webkit-overflow-scrolling:touch}
 html.en-app #wkLista{min-height:72px}
@@ -3282,7 +3284,7 @@ function show(id){
   document.querySelectorAll('.screen').forEach(s=>s.classList.toggle('on',s.id===id));document.body.classList.remove('red');window.scrollTo(0,0);
   const wk=WKS.includes(id)&&!!(ROOM&&ROOM.remote); // el walkie solo existe con "Jugamos a distancia"
   document.querySelector('.wrap').classList.toggle('game',WKS.includes(id));
-  $('wkFab').classList.toggle('on',wk);
+  $('wkFab').classList.toggle('on',wk);document.body.classList.toggle('wk-fab',wk);
   if(!wk){WK.cerrar();WK.soltar()}else WK.modo();
 }
 document.querySelectorAll('[data-go]').forEach(b=>b.onclick=()=>show(b.dataset.go));
@@ -3794,6 +3796,20 @@ function castStartVote(){
   if(!S||S.ph!=='word'||!game)return;
   if(iAmHost())hStartVote(aliveList(),false);else bc('act',{k:'startVote'});
 }
+/* El anfitrión que se va pasa el puesto al siguiente jugador conectado, sin esperar a que lo releven por ausencia */
+function hCedeHost(){
+  if(!ROOM||!S||!iAmHost()||!netUp())return;
+  const c=candidates(roster()).find(p=>p!==PID);if(!c)return;
+  S={...S,host:c,ep:S.ep+1,sq:0,vt:S.vt?{...S.vt,voted:[]}:null};
+  bc('st',S);
+}
+/* Salir de la sala (desde la sala de espera o con la partida empezada): avisa, cede el puesto si eras el anfitrión y suelta la sala */
+function salirDeSala(){
+  if(!ROOM)return;
+  if(game)castLeave();
+  hCedeHost();
+  dropRoom();phHtml='';
+}
 function castLeave(){
   if(!game)return;
   if(iAmHost())hLeave(PID);else bc('act',{k:'leave',p:PID});
@@ -3803,7 +3819,7 @@ function castLeave(){
 function renderAll(){
   NET.R=roster();
   if(ROOM)routeScreen();
-  if(game){renderCard();renderTop();renderNet();renderPhase();renderReveal();renderJoinReq()}
+  if(game)[renderCard,renderTop,renderNet,renderPhase,renderReveal,renderJoinReq].forEach(f=>{try{f()}catch(e){dbg('render '+f.name+': '+(e&&e.message))}});
   renderVoteSheet();renderLobby();renderWait();checkPropose();WK.pinta();
 }
 /* En una sala en línea, la pantalla la decide el estado: sala de espera, juego o "entrarás en la siguiente ronda" */
@@ -3822,7 +3838,14 @@ function onEnterRoom(){
   if(ROOM.remote&&!lsGet('impostor-wk-'+ROOM.code)){lsSet('impostor-wk-'+ROOM.code,1);setTimeout(()=>{if(ROOM&&!WK.abierto)WK.abrir()},500)}
   if(WK.inapp())toast('Estás dentro de otra app: el micrófono no irá. Abre el enlace en Safari o Chrome.');
 }
-function onEnterGame(){cardKey='';lastRoomPhase='';lastVoted={id:'',n:0};lockScreen()}
+/* Al crear o unirse a una sala, o al empezar su partida, se olvida del todo la partida de un solo móvil (SOLO, su revelación y sus temporizadores):
+   con SOLO viejo, el menú «Salir» de la sala tomaba el camino del modo de un solo móvil y no sacaba de la sala. */
+function limpiaSolo(){
+  clearTimeout(SOLOREV.tm);SOLOREV={id:null,t0:0,tm:null,html:'',vib:false};clearReveal();
+  if(SOLO){SOLO=null;soloSave()}
+  cardKey='';
+}
+function onEnterGame(){limpiaSolo();cardKey='';lastRoomPhase='';lastVoted={id:'',n:0};lockScreen()}
 let cardKey='';
 /* Pinta una tarjeta (palabra o impostor) en el elemento dado. La usan tanto la partida en línea/legacy
    como el modo de un solo móvil, para no duplicar la asignación de palabra ni el diseño de la tarjeta. */
@@ -4048,7 +4071,7 @@ function salirSalaSheet(){
   const nota=iAmHost()?(otros>0?'Como eres el anfitrión, otro jugador pasará a serlo.':'Eres el único en la sala: se cerrará.'):'Podrás volver a entrar con el código de la sala.';
   sheet(`<h3>¿Salir de la sala?</h3><p>${nota}</p><button class="act" id="slYes">Salir</button><button class="link" id="slNo">Quedarme</button>`,()=>{
     $('slNo').onclick=closeSheet;
-    $('slYes').onclick=()=>{closeSheet();if(ROOM)dropRoom();phHtml='';show('s-home')};
+    $('slYes').onclick=()=>{closeSheet();salirDeSala();show('s-home')};
   });
 }
 $('lbBack').onclick=salirSalaSheet;$('wtBack').onclick=salirSalaSheet;
@@ -4080,7 +4103,7 @@ $('doCreateRoom').onclick=async()=>{
   if(!rs.mask)return;
   err.textContent='';btn.disabled=true;btn.textContent='Creando la sala…';
   try{
-    if(ROOM)dropRoom();
+    limpiaSolo();if(ROOM)dropRoom();
     for(let i=0;i<6;i++){
       const code=newRoomCode();S=null;
       const ok=await netJoinWait(code);
@@ -4113,7 +4136,7 @@ async function doJoinRoom(codeRaw,nameRaw){
   let name=cleanName(nameRaw);
   if(!name)return 'Escribe tu nombre (de 1 a 14 caracteres).';
   if(nombreOfensivo(name))return MSG_NOMBRE;
-  if(ROOM)dropRoom();
+  limpiaSolo();if(ROOM)dropRoom();
   S=null;
   if(!await netJoinWait(code)){netLeave();return 'No hay conexión con el servidor. Prueba otra vez.'}
   const t0=Date.now();
@@ -4396,7 +4419,7 @@ function menuResetRankHtml(){
     <button class="act" data-a="menuResetRankYes">Reiniciar</button><button class="link" data-a="menuBack">Cancelar</button>`;
 }
 function menuExitHtml(){
-  if(SOLO)return `<h3>¿Terminar la partida?</h3><p>Se perderá la ronda actual y el marcador de esta sesión.</p>
+  if(SOLO&&!ROOM)return `<h3>¿Terminar la partida?</h3><p>Se perderá la ronda actual y el marcador de esta sesión.</p>
     <button class="act" data-a="menuExitYes">Terminar</button><button class="link" data-a="menuBack">Seguir jugando</button>`;
   const notes=[];
   if(iAmHost())notes.push('Si sales, otro jugador pasará a ser el anfitrión.');
@@ -4422,8 +4445,8 @@ $('menuSheetEl').addEventListener('click',e=>{
   else if(a==='menuExit')menuSheet(menuExitHtml());
   else if(a==='menuExitYes'){
     closeMenu();
-    if(SOLO){clearReveal();SOLO=null;game=null;soloSave()}
-    else if(ROOM){if(game)castLeave();dropRoom()}
+    if(ROOM)salirDeSala();
+    else if(SOLO){clearReveal();SOLO=null;game=null;soloSave()}
     else{game=null;save()}
     phHtml='';show('s-home');
   }
