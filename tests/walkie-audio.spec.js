@@ -102,3 +102,37 @@ test.describe('Sala de espera: «‹ Volver»', () => {
     await expect(page.locator('#s-home')).toHaveClass(/on/);
   });
 });
+
+test.describe('Sonido tras soltar el micro (app)', () => {
+  const puente = () => {
+    window.__ev = [];
+    window.Capacitor = { isNativePlatform: () => true, Plugins: { AudioSesion: { modo: (o) => { window.__ev.push(o.modo); return Promise.resolve(); } } } };
+    navigator.mediaDevices.getUserMedia = async () => ({
+      active: true,
+      getAudioTracks: () => [{ readyState: 'live' }],
+      getTracks: () => [{ stop: () => window.__ev.push('micro-suelto') }],
+    });
+  };
+
+  test('al salir de las pantallas del walkie con el micro abierto, «ambient» se vuelve a pedir con el micro ya suelto', async ({ page }) => {
+    await page.addInitScript(puente);
+    await page.goto('/');
+    await page.evaluate(async () => {
+      ROOM = { code: 'ABCDE', name: 'Ana', creator: true, remote: true, joined: Date.now() };
+      WK.abrir(); await WK.micro(); window.__ev = [];
+      show('s-home'); // cerrar() pide ambient con el micro aún abierto; soltar() lo libera
+    });
+    await page.waitForTimeout(700);
+    const ev = await page.evaluate(() => window.__ev);
+    const suelto = ev.indexOf('micro-suelto');
+    expect(suelto).toBeGreaterThan(-1);
+    expect(ev.slice(suelto + 1)).toEqual(['ambient', 'ambient']); // justo después y un instante más tarde
+  });
+
+  test('en un solo móvil (sin micro) no se toca la sesión de audio de más al cambiar de pantalla', async ({ page }) => {
+    await page.addInitScript(puente);
+    await page.goto('/');
+    const ev = await page.evaluate(async () => { window.__ev = []; show('s-home'); show('s-home'); await new Promise((r) => setTimeout(r, 700)); return window.__ev; });
+    expect(ev).toEqual(['ambient', 'ambient']); // solo el de cerrar(), una vez por cambio de pantalla, como antes
+  });
+});

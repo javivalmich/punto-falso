@@ -4577,10 +4577,14 @@ const WK={
   /* Suelta el micro de verdad (pistas, nodos y AudioContext) para que desaparezca el punto naranja de iOS.
      ctx() lo vuelve a crear cuando haga falta. */
   soltar(){
+    const tenia=!!(this.stream||this._c);
     this.pararGrabacion();this.pararMicro();
     const c=this._c;this._c=null;this.bus=null;
     if(c){try{c.close().catch(()=>{})}catch(e){}}
     this.btn(false);this.nivel(0);this.diag();
+    /* App iOS: cerrar() pide «ambient» con el micro aún abierto y iOS puede dejar la sesión de audio en modo grabación (sonidos del juego bajos o mudos).
+       Con el micro ya liberado se vuelve a fijar «ambient», y otra vez un instante después. Sin micro abierto (p. ej. un solo móvil) no hace nada. */
+    if(EN_APP&&tenia&&!this.abierto){audioModo('ambient');setTimeout(()=>{if(!WK.abierto&&!WK.stream)audioModo('ambient')},500)}
   },
   /* Sale de la llamada: corta micro y audio, y deja de recibir voz y mensajes hasta volver a entrar.
      No es salir de la partida: el walkie se puede reabrir después. */
