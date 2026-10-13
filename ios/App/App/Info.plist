@@ -37,7 +37,7 @@
       <string>UIInterfaceOrientationPortrait</string>
     </array>
     <key>NSMicrophoneUsageDescription</key>
-    <string>Punto Falso usa el micrófono solo para el walkie-talkie, para que hables con los demás jugadores de tu sala.</string>
+    <string>Punto Falso usa el micrófono para el walkie-talkie entre jugadores de la misma partida.</string>
     <key>UIViewControllerBasedStatusBarAppearance</key>
     <true/>
     <key>UIApplicationSceneManifest</key>

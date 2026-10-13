@@ -381,6 +381,12 @@ body.red .sheet .act{background:var(--red)}
 #wk.compact .wk-caja{pointer-events:auto;height:min(52vh,400px);box-shadow:0 -10px 30px rgba(0,0,0,.5)}
 #wk.compact #wkDiag{display:none}
 body.wk-compact .wrap.game{padding-bottom:calc(min(52vh,400px) + 24px)}
+/* App iOS: la hoja del walkie cabe en la pantalla real (dvh, zona segura) y, con el teclado, en el área visible */
+html.en-app .wk-caja{height:min(84dvh,700px);max-height:100%;overflow-y:auto;-webkit-overflow-scrolling:touch}
+html.en-app #wkLista{min-height:72px}
+@media (max-height:740px){html.en-app #wkMicNota,html.en-app #wkDiag,html.en-app #wkNormas{display:none}}
+html.en-app #wk.kb .wk-caja{height:100%;padding-bottom:14px}
+html.en-app #wk.kb :is(.wk-call,#wkVolver,#wkDesc,#wkAviso,#wkMicNota,#wkDiag,#wkNormas){display:none}
 
 /* hojas de confirmación y avisos por encima del walkie */
 .overlay{z-index:70}
@@ -3260,6 +3266,9 @@ function lookOf(slot){
   return e&&e.a?lookOfArr(e.a):null;
 }
 
+/* App nativa (Capacitor): el WebView de iOS no es «otra app» ni un navegador integrado */
+const EN_APP=!!(window.Capacitor&&window.Capacitor.isNativePlatform&&window.Capacitor.isNativePlatform());
+if(EN_APP)document.documentElement.classList.add('en-app');
 /* ---------- Red: Supabase Realtime (mismo proyecto que Punto Ciego) ---------- */
 const SUPA={
   url:'https://qsmcdfyyxvqmesnbwsod.supabase.co',
@@ -4375,7 +4384,7 @@ const WK={
   ruido(dur=.1,vol=.16){const c=this.ctx();if(!c)return;const n=Math.floor(c.sampleRate*dur),b=c.createBuffer(1,n,c.sampleRate),d=b.getChannelData(0);
     for(let i=0;i<n;i++)d[i]=(Math.random()*2-1)*vol*(1-i/n);const s=c.createBufferSource();s.buffer=b;s.connect(this.bus);s.start()},
   /* WhatsApp, Instagram, etc. abren la web en un navegador integrado que no deja usar el micro */
-  inapp(){const ua=navigator.userAgent;return /FBAN|FBAV|FB_IAB|Instagram|WhatsApp|Line\/|Snapchat|TikTok|Twitter|MicroMessenger|; wv\)/i.test(ua)||(/iPhone|iPad|iPod/.test(ua)&&!/Safari\//.test(ua)&&!/CriOS|FxiOS|EdgiOS|OPiOS/.test(ua))},
+  inapp(){if(EN_APP)return false;const ua=navigator.userAgent;return /FBAN|FBAV|FB_IAB|Instagram|WhatsApp|Line\/|Snapchat|TikTok|Twitter|MicroMessenger|; wv\)/i.test(ua)||(/iPhone|iPad|iPod/.test(ua)&&!/Safari\//.test(ua)&&!/CriOS|FxiOS|EdgiOS|OPiOS/.test(ua))},
   noPuede(){
     if(!ROOM)return game?'Sin conexión: el walkie necesita internet':'Entra en una partida para usar el walkie';
     if(!netUp())return 'Sin conexión: el walkie necesita internet';
@@ -4600,6 +4609,13 @@ const WK={
   }
 };
 WK.init();
+/* App iOS: el teclado no redimensiona la página; la hoja sigue al área visible (visualViewport) para que no quede debajo */
+if(EN_APP&&window.visualViewport){
+  const vv=window.visualViewport,w=$('wk');
+  const ajusta=()=>{const kb=window.innerHeight-vv.height>100;w.classList.toggle('kb',kb);
+    if(kb){w.style.top=vv.offsetTop+'px';w.style.bottom='auto';w.style.height=vv.height+'px'}else{w.style.top=w.style.bottom=w.style.height=''}};
+  vv.addEventListener('resize',ajusta);vv.addEventListener('scroll',ajusta);
+}
 if(lsGet('impostor-micok'))$('wkMicNota').hidden=true;
 
 /* ---------- Cuenta opcional de Punto Ciego ---------- */
