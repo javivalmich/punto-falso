@@ -3332,6 +3332,7 @@ async function netJoin(code){
   NET.code=code;NET.st='connecting';NET.resumed=false;NET.hostSeen=false;NET.lastTrack='';renderAll();
   let sb;try{sb=await loadSB()}catch(e){if(NET.code===code){NET.st='off';renderAll()}return}
   if(NET.code!==code||NET.ch)return;
+  purgaCanales(sb,'impostor-'+code);
   const ch=sb.channel('impostor-'+code,{config:{broadcast:{self:false,ack:false},presence:{key:NET.cid}}});
   NET.ch=ch;
   ch.on('broadcast',{event:'st'},m=>onState(m.payload));
@@ -3356,9 +3357,25 @@ async function netJoinWait(code){
   }
   return false;
 }
-function netLeave(){
+function netLeave(retraso){
   const ch=NET.ch;NET.ch=null;NET.code=null;NET.st='off';NET.goneAt=0;NET.R={};NET.lastTrack='';
-  if(ch){try{SB&&SB.removeChannel(ch)}catch(e){}}
+  if(ch)quitaCanal(ch,retraso||0);
+}
+/* Cierra un canal SIN esperar a la red. Con el socket muerto (móvil que ha estado en segundo plano) el «leave» de supabase-js no contesta hasta agotar su plazo y,
+   mientras tanto, el canal sigue en su lista: un sb.channel() con el mismo nombre devolvería ese canal ya usado y .on() fallaría («cannot add callbacks after subscribe()»).
+   Por eso se cierra en segundo plano, con un máximo de 3 s tras el cual se desmonta a la fuerza y se saca de la lista. */
+function quitaCanal(ch,retraso){
+  const sb=SB;if(!sb)return;
+  let fin=false;
+  const limpia=()=>{if(fin)return;fin=true;try{ch.teardown&&ch.teardown()}catch(e){}try{const L=sb.realtime&&sb.realtime.channels,i=L?L.indexOf(ch):-1;if(i>=0)L.splice(i,1)}catch(e){}};
+  const ya=()=>{try{Promise.resolve(sb.removeChannel(ch)).then(limpia,limpia)}catch(e){limpia()}setTimeout(limpia,3000)};
+  if(retraso)setTimeout(ya,retraso);else ya();
+}
+function purgaCanales(sb,nombre){
+  try{(sb.getChannels?sb.getChannels():[]).filter(c=>c&&c.topic==='realtime:'+nombre).forEach(c=>{
+    try{c.teardown&&c.teardown()}catch(e){}
+    try{const L=sb.realtime&&sb.realtime.channels,i=L?L.indexOf(c):-1;if(i>=0)L.splice(i,1)}catch(e){}
+  })}catch(e){}
 }
 function hardReconnect(){if(!NET.code)return;const c=NET.code;netLeave();netJoin(c)}
 const myName=()=>ROOM?ROOM.name:'';
@@ -3422,8 +3439,12 @@ function nameTaken(){
   show('s-join');$('codeIn').value=code;$('joinName').value=nm;
   $('joinErr').textContent=`Ya hay alguien llamado «${nm}» en la sala. Añade una inicial.`;
 }
-function dropRoom(){
-  const c=ROOM&&ROOM.code;netLeave();WK.reset();WK.cerrar();ROOM=null;game=null;S=null;HV=null;MYV=null;phHtml='';
+function dropRoom(retraso){
+  const c=ROOM&&ROOM.code;
+  try{netLeave(retraso)}catch(e){console.warn('netLeave',e)}
+  try{WK.reset()}catch(e){console.warn('walkie',e)}
+  try{WK.cerrar()}catch(e){console.warn('walkie',e)}
+  ROOM=null;game=null;S=null;HV=null;MYV=null;phHtml='';
   if(c)lsDel('impostor-s-'+c);saveRoom();
 }
 
@@ -3718,9 +3739,12 @@ function hCedeHost(){
 /* Salir de la sala (desde la sala de espera o con la partida empezada): avisa, cede el puesto si eras el anfitrión y suelta la sala */
 function salirDeSala(){
   if(!ROOM)return;
-  if(game)castLeave();
-  hCedeHost();
-  dropRoom();phHtml='';
+  /* «Salir» no depende de la red: el aviso a los demás y la cesión del puesto de anfitrión son envíos que no se esperan (y si fallan, se ignora), el cierre del
+     canal se hace en segundo plano (a los 400 ms, con máximo de 3 s) y lo local se borra siempre. */
+  try{if(game)castLeave()}catch(e){console.warn('salir: aviso',e)}
+  try{hCedeHost()}catch(e){console.warn('salir: cesión',e)}
+  try{dropRoom(400)}catch(e){console.warn('salir',e);ROOM=null;game=null;S=null;HV=null;MYV=null;try{saveRoom()}catch(x){}}
+  phHtml='';
 }
 function castLeave(){
   if(!game)return;
@@ -3983,7 +4007,7 @@ function salirSalaSheet(){
   const nota=iAmHost()?(otros>0?'Como eres el anfitrión, otro jugador pasará a serlo.':'Eres el único en la sala: se cerrará.'):'Podrás volver a entrar con el código de la sala.';
   sheet(`<h3>¿Salir de la sala?</h3><p>${nota}</p><button class="act" id="slYes">Salir</button><button class="link" id="slNo">Quedarme</button>`,()=>{
     $('slNo').onclick=closeSheet;
-    $('slYes').onclick=()=>{closeSheet();salirDeSala();show('s-home')};
+    $('slYes').onclick=()=>{try{closeSheet();salirDeSala()}finally{show('s-home')}};
   });
 }
 $('lbBack').onclick=salirSalaSheet;$('wtBack').onclick=salirSalaSheet;
@@ -4360,11 +4384,12 @@ $('menuSheetEl').addEventListener('click',e=>{
   else if(a==='menuAcct'){closeMenu();cuentaMenuSheet()}
   else if(a==='menuExit')menuSheet(menuExitHtml());
   else if(a==='menuExitYes'){
-    closeMenu();
-    if(ROOM)salirDeSala();
-    else if(SOLO){clearReveal();SOLO=null;game=null;soloSave()}
-    else{game=null;save()}
-    phHtml='';show('s-home');
+    try{
+      closeMenu();
+      if(ROOM)salirDeSala();
+      else if(SOLO){clearReveal();SOLO=null;game=null;soloSave()}
+      else{game=null;save()}
+    }finally{phHtml='';show('s-home')}
   }
 });
 ['gameMenu','lobbyMenu','waitMenu','scMenu','sdMenu','svMenu'].forEach(id=>{$(id).onclick=menuOpenFresh});
@@ -4372,11 +4397,20 @@ $('menuSheetEl').addEventListener('click',e=>{
 /* Que la pantalla no se apague durante la partida */
 let WL=null;
 async function lockScreen(){try{if((game||ROOM)&&navigator.wakeLock&&!WL){WL=await navigator.wakeLock.request('screen');WL.addEventListener('release',()=>{WL=null})}}catch(e){}}
-document.addEventListener('visibilitychange',()=>{
-  if(document.hidden)return;
-  if(NET.code&&(!NET.ch||NET.ch.state!=='joined'))hardReconnect();
+/* Al irse y volver a la app (visibilitychange en la web, appStateChange de Capacitor): con el móvil en segundo plano el socket muere sin avisar y el canal puede seguir
+   «joined» sin estarlo. Si el canal no está unido, o se ha estado fuera más de 3 s, se reconecta de cero (la recuperación de channel_crash se encarga del resto:
+   volver a registrar la presencia, pedir el estado, relevar al anfitrión). Los dos eventos pueden llegar juntos: el segundo, en menos de 0,8 s, se ignora. */
+const VUELTA={fuera:0,ult:0};
+function alIrse(){if(!VUELTA.fuera)VUELTA.fuera=Date.now()}
+function alVolver(){
+  const t=VUELTA.fuera;VUELTA.fuera=0;
+  if(Date.now()-VUELTA.ult<800)return;VUELTA.ult=Date.now();
   lockScreen();
-});
+  if(!NET.code)return;
+  if(!NET.ch||NET.ch.state!=='joined'||(t&&Date.now()-t>3000)){dbg('vuelta: reconecto');hardReconnect()}
+}
+document.addEventListener('visibilitychange',()=>{document.hidden?alIrse():alVolver()});
+try{const AP=EN_APP&&window.Capacitor.Plugins&&window.Capacitor.Plugins.App;if(AP&&AP.addListener)AP.addListener('appStateChange',s=>{s&&s.isActive?alVolver():alIrse()})}catch(e){}
 window.addEventListener('online',()=>{if(NET.code&&NET.st!=='up')hardReconnect()});
 
 /* ---------- Walkie-talkie ----------

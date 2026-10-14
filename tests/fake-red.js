@@ -2,7 +2,12 @@
 // que reparte los mensajes y la presencia entre las páginas del mismo contexto de Playwright (BroadcastChannel).
 const FAKE = `(function(){
   const vivos=[]; /* canales abiertos de esta página */
+  const canales=[]; /* como supabase-js: el cliente guarda sus canales y channel(nombre) devuelve el que ya existe con ese nombre */
   window.__fakeRed={rejoinMs:1200,
+    /* Socket muerto sin aviso (móvil en segundo plano): el canal sigue «joined», no recibe nada y send/track/leave no contestan nunca. */
+    colgada:false,
+    muere(){this.colgada=true;vivos.forEach(c=>{c.sordo=true})},
+    reinicia(){this.colgada=false;vivos.forEach(c=>{c.sordo=false})},
     /* Simula la caída del servidor en la sala de esta página. Con silencioso, el servidor solo pierde la presencia (sin avisar a nadie).
        Si no, el canal falla (CHANNEL_ERROR), todos pierden la presencia y se reconectan tras rejoinMs con presence_state vacío. */
     crash(silencioso){const c=vivos[0];if(c)c._crash(!!silencioso)}};
@@ -18,27 +23,33 @@ const FAKE = `(function(){
       setTimeout(()=>{if(ch.state!=='errored')return;ch.state='joined';sync();subCb&&subCb('SUBSCRIBED');bc.postMessage({k:'hello'})},window.__fakeRed.rejoinMs);
     };
     const ch={state:'closed',
-      on(t,f,cb){if(t==='broadcast')(H.broadcast[f.event]=H.broadcast[f.event]||[]).push(cb);else if(t==='presence')H.presence.push(cb);return ch},
+      on(t,f,cb){if(ch.usado&&t!=='presence')throw new Error('cannot add '+t+' callbacks for realtime:'+name+' after subscribe().');if(t==='broadcast')(H.broadcast[f.event]=H.broadcast[f.event]||[]).push(cb);else if(t==='presence')H.presence.push(cb);return ch},
       subscribe(cb){
-        subCb=cb;ch.state='joined';
+        subCb=cb;ch.state='joined';ch.usado=true;
         bc.onmessage=e=>{const m=e.data;
           if(m.k==='crash'){caida(m.silencioso);return}
-          if(ch.state!=='joined')return; /* caído: no recibe nada */
+          if(ch.state!=='joined'||ch.sordo)return; /* caído o con el socket muerto: no recibe nada */
           if(m.k==='b')(H.broadcast[m.event]||[]).forEach(f=>f({payload:m.payload}));
           else if(m.k==='p'){peers[m.key]=m.p;sync()}
           else if(m.k==='bye'){delete peers[m.key];sync()}
           else if(m.k==='hello'&&mine)bc.postMessage({k:'p',key,p:mine})};
         setTimeout(()=>{cb&&cb('SUBSCRIBED');bc.postMessage({k:'hello'})},10);return ch},
-      send(m){if(ch.state==='joined')bc.postMessage({k:'b',event:m.event,payload:m.payload});return Promise.resolve('ok')},
-      track(p){if(ch.state!=='joined')return Promise.resolve('error');mine=p;bc.postMessage({k:'p',key,p});sync();return Promise.resolve('ok')},
+      send(m){if(window.__fakeRed.colgada)return new Promise(()=>{});if(ch.state==='joined')bc.postMessage({k:'b',event:m.event,payload:m.payload});return Promise.resolve('ok')},
+      track(p){if(window.__fakeRed.colgada)return new Promise(()=>{});if(ch.state!=='joined')return Promise.resolve('error');mine=p;bc.postMessage({k:'p',key,p});sync();return Promise.resolve('ok')},
       presenceState(){const o={};for(const k in peers)o[k]=[peers[k]];if(mine)o[key]=[mine];return o},
       _crash(silencioso){bc.postMessage({k:'crash',silencioso});caida(silencioso)},
-      _close(){try{bc.postMessage({k:'bye',key});bc.close()}catch(e){}ch.state='closed';const i=vivos.indexOf(ch);if(i>=0)vivos.splice(i,1)}};
-    vivos.push(ch);
+      _close(){try{bc.postMessage({k:'bye',key});bc.close()}catch(e){}ch.state='closed';const i=vivos.indexOf(ch);if(i>=0)vivos.splice(i,1)},
+      teardown(){ch.state='closed';ch.usado=false;try{bc.close()}catch(e){}const i=vivos.indexOf(ch);if(i>=0)vivos.splice(i,1);const j=canales.indexOf(ch);if(j>=0)canales.splice(j,1)}};
+    ch.topic='realtime:'+name;
+    vivos.push(ch);canales.push(ch);
     return ch;
   }
   window.supabase={createClient(){return {
-    channel:(n,c)=>mkCh(n,c),removeChannel:ch=>{ch._close();return Promise.resolve('ok')},
+    realtime:{channels:canales},getChannels:()=>canales,
+    channel:(n,c)=>canales.find(x=>x.topic==='realtime:'+n)||mkCh(n,c),
+    removeChannel:ch=>{
+      if(window.__fakeRed.colgada){ch.state='leaving';return new Promise(()=>{})} /* el «leave» no contesta: el canal sigue en la lista */
+      ch._close();const j=canales.indexOf(ch);if(j>=0)canales.splice(j,1);return Promise.resolve('ok')},
     auth:{onAuthStateChange:()=>({data:{subscription:{unsubscribe(){}}}}),getSession:async()=>({data:{session:null}}),signOut:async()=>({})},
     from:()=>({select:()=>({eq:()=>({maybeSingle:async()=>({data:null})})})}),rpc:async()=>({}),functions:{invoke:async()=>({data:null})}
   }}};
