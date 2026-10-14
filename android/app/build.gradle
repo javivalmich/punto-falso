@@ -1,0 +1,72 @@
+apply plugin: 'com.android.application'
+
+/* Firma de release (Play App Signing: esta es la clave de SUBIDA). La clave y sus contraseñas viven FUERA del repo: por defecto en
+   %USERPROFILE%\keystores\puntofalso\keystore.properties (storeFile, storePassword, keyAlias, keyPassword), o la ruta que se pase con -PpfKeystoreProps=...
+   Si el archivo no existe, el release sale sin firmar (no falla). */
+def pfProps = new Properties()
+def pfPropsFile = file(project.findProperty('pfKeystoreProps') ?: "${System.properties['user.home']}/keystores/puntofalso/keystore.properties")
+if (pfPropsFile.exists()) pfPropsFile.withInputStream { pfProps.load(it) }
+
+android {
+    namespace = "es.puntostudio.puntofalso"
+    compileSdk = rootProject.ext.compileSdkVersion
+    defaultConfig {
+        applicationId "es.puntostudio.puntofalso"
+        minSdkVersion rootProject.ext.minSdkVersion
+        targetSdkVersion rootProject.ext.targetSdkVersion
+        versionCode 1
+        versionName "1.0"
+        testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+        aaptOptions {
+             // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.
+             // Default: https://android.googlesource.com/platform/frameworks/base/+/282e181b58cf72b6ca770dc7ca5f91f135444502/tools/aapt/AaptAssets.cpp#61
+            ignoreAssetsPattern = '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
+        }
+    }
+    signingConfigs {
+        release {
+            if (pfProps['storeFile']) {
+                storeFile file(pfProps['storeFile'])
+                storePassword pfProps['storePassword']
+                keyAlias pfProps['keyAlias']
+                keyPassword pfProps['keyPassword']
+            }
+        }
+    }
+    buildTypes {
+        release {
+            if (pfProps['storeFile']) signingConfig signingConfigs.release
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+        }
+    }
+}
+
+repositories {
+    flatDir{
+        dirs '../capacitor-cordova-android-plugins/src/main/libs', 'libs'
+    }
+}
+
+dependencies {
+    implementation fileTree(include: ['*.jar'], dir: 'libs')
+    implementation "androidx.appcompat:appcompat:$androidxAppCompatVersion"
+    implementation "androidx.coordinatorlayout:coordinatorlayout:$androidxCoordinatorLayoutVersion"
+    implementation "androidx.core:core-splashscreen:$coreSplashScreenVersion"
+    implementation project(':capacitor-android')
+    testImplementation "junit:junit:$junitVersion"
+    androidTestImplementation "androidx.test.ext:junit:$androidxJunitVersion"
+    androidTestImplementation "androidx.test.espresso:espresso-core:$androidxEspressoCoreVersion"
+    implementation project(':capacitor-cordova-android-plugins')
+}
+
+apply from: 'capacitor.build.gradle'
+
+try {
+    def servicesJSON = file('google-services.json')
+    if (servicesJSON.text) {
+        apply plugin: 'com.google.gms.google-services'
+    }
+} catch(Exception e) {
+    logger.info("google-services.json not found, google-services plugin not applied. Push Notifications won't work")
+}

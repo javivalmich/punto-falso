@@ -1,0 +1,8 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Fondo de la ventana: igual que el fondo de la web (claro u oscuro según el sistema) -->
+    <color name="fondo">#f3f3f5</color>
+    <!-- Pantalla de inicio: siempre oscura, como la de iOS -->
+    <color name="fondo_splash">#070706</color>
+</resources>
+

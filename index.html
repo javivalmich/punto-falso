@@ -3227,6 +3227,9 @@ document.addEventListener('pointerdown',()=>SND.unlock(),{once:true});
    y las páginas externas (privacidad, términos, soporte…) se abren con @capacitor/browser y su URL absoluta (atributo data-ext). */
 const EN_APP=!!(window.Capacitor&&window.Capacitor.isNativePlatform&&window.Capacitor.isNativePlatform());
 if(EN_APP)document.documentElement.classList.add('en-app');
+/* Android (misma app Capacitor, WebView de Chrome): sin plugin AudioSesion de iOS ni Sign in with Apple; botón «atrás» propio (más abajo) */
+const ANDROID=EN_APP&&!!window.Capacitor.getPlatform&&window.Capacitor.getPlatform()==='android';
+if(ANDROID)document.documentElement.classList.add('en-android');
 /* Sesión de audio. Los efectos son <audio> (WAV generados al vuelo) y el walkie usa Web Audio: WKWebView pisa la categoría nativa, así que se
    fija también con navigator.audioSession.type (iOS 16.4+): 'ambient' (respeta el silencio) y 'play-and-record' solo con el walkie abierto.
    La categoría nativa (plugin AudioSesion) queda de respaldo. El console.log es temporal, para comprobarlo en Xcode. */
@@ -4779,7 +4782,8 @@ const WK={
   init(){
     $('wkFab').onclick=()=>this.abrir();$('wkCerrar').onclick=()=>this.cerrar();$('wkFondo').onclick=()=>this.cerrar();
     $('wkVolver').onclick=()=>this.cerrar();
-    $('wkAjustes').onclick=async()=>{try{await window.Capacitor.Plugins.AudioSesion.abrirAjustes()}catch(e){toast('Abre Ajustes → Punto Falso → Micrófono')}};
+    if(ANDROID)$('wkMicOff').querySelector('p').textContent='Has desactivado el micrófono. Actívalo en Ajustes → Aplicaciones → Punto Falso → Permisos → Micrófono para hablar por el walkie. Los mensajes de texto siguen funcionando.';
+    $('wkAjustes').onclick=async()=>{try{await window.Capacitor.Plugins.AudioSesion.abrirAjustes()}catch(e){toast(ANDROID?'Abre Ajustes → Aplicaciones → Punto Falso → Permisos':'Abre Ajustes → Punto Falso → Micrófono')}};
     document.addEventListener('visibilitychange',()=>{if(!document.hidden)this.reintentaMicro()});
     $('wkDesc').onclick=()=>{this.salirLlamada();this.cerrar()};
     const mandar=()=>{const i=$('wkTxt'),t=i.value.trim();if(!t||this.noPuede())return;
@@ -4808,9 +4812,28 @@ if(EN_APP&&window.visualViewport){
   vv.addEventListener('resize',ajusta);vv.addEventListener('scroll',ajusta);
 }
 if(lsGet('impostor-micok'))$('wkMicNota').hidden=true;
+/* Android: botón «atrás» del sistema. Cierra lo que esté encima (hoja, menú, walkie), luego hace lo mismo que «‹ Volver» y, dentro de una partida,
+   pregunta antes de salir; la app solo se cierra desde la portada (y con partida en marcha, preguntando). */
+if(ANDROID)try{
+  const AppP=window.Capacitor.Plugins.App,salirApp=()=>{try{AppP.exitApp()}catch(e){}};
+  AppP.addListener('backButton',()=>{
+    if($('overlay').classList.contains('on')){closeSheet();return}
+    if(menuOpen){closeMenu();return}
+    if(WK.abierto){WK.cerrar();return}
+    const cur=document.querySelector('.screen.on'),volver=cur&&cur.querySelector(':scope > button.back');
+    if(volver){volver.click();return}
+    if(cur&&cur.id==='s-solo-hand'){$('shQuit').click();return}
+    if(cur&&cur.id==='s-home'){
+      if(game||ROOM||SOLO)sheet('<h3>¿Cerrar Punto Falso?</h3><p>Tienes una partida en marcha.</p><button class="act" id="axYes">Cerrar la app</button><button class="link" id="axNo">Seguir jugando</button>',()=>{$('axNo').onclick=closeSheet;$('axYes').onclick=salirApp});
+      else salirApp();
+      return;
+    }
+    menuOpenFresh();menuSheet(menuExitHtml());
+  });
+}catch(e){console.warn('back',e)}
 
 /* ---------- Cuenta opcional de Punto Ciego ---------- */
-let GOOGLE=false,APPLE=EN_APP; /* en la app, el botón de Apple va siempre; en la web, solo si Supabase lo tiene activado */
+let GOOGLE=false,APPLE=EN_APP&&!ANDROID; /* en la app de iOS, el botón de Apple va siempre; en la web, solo si Supabase lo tiene activado; en Android, nunca (el plugin nativo es solo de iOS) */
 const G_LOGO='<svg width="18" height="18" viewBox="0 0 48 48" aria-hidden="true"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg>';
 const APPLE_LOGO='<svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M16.365 1.43c0 1.14-.416 2.06-1.25 2.79-.905.79-1.998 1.24-3.017 1.16-.12-1.11.42-2.1 1.24-2.85.86-.79 2.03-1.26 3.02-1.1zM20.6 17.06c-.44 1.02-.96 2.02-1.63 2.94-.9 1.26-1.83 2.5-3.3 2.53-1.44.03-1.9-.86-3.55-.86-1.65 0-2.16.83-3.53.89-1.4.06-2.47-1.36-3.38-2.6C3.42 17.4 2 12.79 3.87 9.66c.93-1.55 2.6-2.53 4.4-2.55 1.38-.03 2.68.93 3.53.93.84 0 2.43-1.15 4.1-.98.7.03 2.66.28 3.92 2.1-.1.06-2.34 1.37-2.32 4.08.03 3.24 2.84 4.32 2.87 4.33-.03.09-.44 1.53-1.47 2.99z"/></svg>';
 function renderAcct(){
@@ -5080,7 +5103,7 @@ async function iniciaCuentas(){
     sb.auth.onAuthStateChange((ev,ses)=>{guardaTokenApple(sb,ses);setTimeout(()=>trasSesion(ses),0)});
     const {data}=await sb.auth.getSession();
     await trasSesion(data.session);
-    fetch(SUPA.url+'/auth/v1/settings',{headers:{apikey:SUPA.key}}).then(r=>r.json()).then(j=>{if(j&&j.external){if(j.external.google)GOOGLE=true;if(j.external.apple)APPLE=true}}).catch(()=>{});
+    fetch(SUPA.url+'/auth/v1/settings',{headers:{apikey:SUPA.key}}).then(r=>r.json()).then(j=>{if(j&&j.external){if(j.external.google)GOOGLE=true;if(j.external.apple&&!ANDROID)APPLE=true}}).catch(()=>{});
   }catch(e){console.warn('cuentas',e)}
 }
 async function trasSesion(ses){
