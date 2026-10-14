@@ -3272,6 +3272,25 @@ try{if(EN_APP){
   const rv0=document.getElementById('reveal');if(rv0)new MutationObserver(barra).observe(rv0,{attributes:true,attributeFilter:['class']});
   barra();
 }}catch(x){console.warn('statusbar',x)}
+/* Android: las franjas de las barras del sistema las pinta la ventana nativa (el WebView termina encima de ellas, ver MainActivity); aquí se les pasa el color de la página
+   para que se vean como parte de la pantalla: tema claro/oscuro, cabecera de body.red y los reveals rojo, blanco y neutro. */
+try{if(ANDROID&&window.Capacitor.Plugins.AudioSesion){
+  const P=window.Capacitor.Plugins.AudioSesion,mqA=matchMedia('(prefers-color-scheme: dark)');let ultB='';
+  const hex=c=>{const m=String(c).match(/[\d.]+/g);return m&&m.length>=3?'#'+m.slice(0,3).map(x=>(Math.round(+x)).toString(16).padStart(2,'0')).join(''):'#0b0b0d'};
+  const pintaBarras=()=>{
+    const rv=document.getElementById('reveal'),on=!!(rv&&rv.classList.contains('on'));
+    const bg=hex(getComputedStyle(document.documentElement).backgroundColor);let a=bg,b=bg;
+    if(on){const k=rv.classList;if(k.contains('red')){a='#ee1a14';b='#8f0a08'}else if(k.contains('white'))a=b='#ffffff';else if(k.contains('neutral')){a='#2a2a33';b='#0b0b0d'}}
+    else if(document.body.classList.contains('red'))a='#8f0a08';
+    if(a+b===ultB)return;ultB=a+b;
+    try{Promise.resolve(P.barras({arriba:a,abajo:b})).catch(()=>{})}catch(e){}
+  };
+  mqA.addEventListener('change',pintaBarras);
+  new MutationObserver(pintaBarras).observe(document.documentElement,{attributes:true,attributeFilter:['data-theme']});
+  new MutationObserver(pintaBarras).observe(document.body,{attributes:true,attributeFilter:['class']});
+  const rv1=document.getElementById('reveal');if(rv1)new MutationObserver(pintaBarras).observe(rv1,{attributes:true,attributeFilter:['class']});
+  pintaBarras();
+}}catch(x){console.warn('barras',x)}
 const QS=new URLSearchParams(location.search);
 const HOST_GRACE=(EN_LOCAL&&(+QS.get('grace'))*1000)||30000; /* segundos sin anfitrión antes de relevarlo */
 

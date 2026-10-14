@@ -8,5 +8,10 @@
   },
   "android": {
     "backgroundColor": "#0b0b0d"
+  },
+  "plugins": {
+    "SystemBars": {
+      "insetsHandling": "disable"
+    }
   }
 }

@@ -81,3 +81,17 @@ test.describe('Android', () => {
     expect(await page.evaluate(() => window.__ajustes)).toBe(1);
   });
 });
+
+test('Android: la página pasa a la ventana nativa el color de las barras (tema, reveal rojo)', async ({ page }) => {
+  await page.addInitScript(puente, { conAudioSesion: true });
+  await page.addInitScript(() => { window.__barras = []; window.Capacitor.Plugins.AudioSesion.barras = (o) => { window.__barras.push(o); return Promise.resolve(); }; });
+  await page.goto('/');
+  await expect(page.locator('#s-home')).toBeVisible();
+  const ini = await page.evaluate(() => window.__barras.slice());
+  expect(ini.length).toBeGreaterThan(0);
+  expect(ini[0].arriba).toMatch(/^#[0-9a-f]{6}$/);
+  await page.evaluate(() => { const r = document.getElementById('reveal'); r.className = 'on red'; });
+  await expect.poll(() => page.evaluate(() => window.__barras.at(-1))).toEqual({ arriba: '#ee1a14', abajo: '#8f0a08' });
+  await page.evaluate(() => { document.getElementById('reveal').className = ''; });
+  await expect.poll(() => page.evaluate(() => window.__barras.at(-1).arriba)).toBe(ini[0].arriba);
+});
