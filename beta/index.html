@@ -3319,8 +3319,8 @@ const PID=(()=>{let p=lsGet('impostor-pid');if(typeof p!=='string'||p.length<8){
 const RALPH='23456789ABCDEFGHJKMNPQRSTUVWXYZ';
 function newRoomCode(){const a=crypto.getRandomValues(new Uint8Array(5));let s='';for(const b of a)s+=RALPH[b%RALPH.length];return s}
 function cleanRoomCode(x){const s=String(x||'').toUpperCase().replace(/[^0-9A-Z]/g,'');return s.length===5&&[...s].every(c=>RALPH.includes(c))?s:''}
-function codeFromInput(str){const m=String(str||'').match(/#s=([0-9A-Za-z]{5})/);return cleanRoomCode(m?m[1]:str)}
-const roomLink=code=>location.href.split('#')[0]+'#s='+code;
+function codeFromInput(str){const m=String(str||'').match(/[?&#]s=([0-9A-Za-z]{5})/);return cleanRoomCode(m?m[1]:str)} /* vale el enlace nuevo (?s=CODIGO) y el antiguo (#s=CODIGO) */
+const roomLink=code=>location.origin+location.pathname+'?s='+code; /* enlace de sala: ?s=CODIGO (como ?c= en Punto Ciego; así lo entienden los enlaces universales y App Links) */
 function saveRoom(){if(ROOM)lsSet('impostor-room',ROOM);else lsDel('impostor-room')}
 function loadRoom(){const r=lsGet('impostor-room');return r&&cleanRoomCode(r.code)&&typeof r.name==='string'&&r.name?r:null}
 
@@ -5205,8 +5205,8 @@ function soloRestore(){
 }
 
 /* ---------- Arranque ---------- */
-const cleanUrl=()=>{try{history.replaceState(null,'',location.href.split('#')[0])}catch(e){}};
-/* Enlaces: #s=CODIGO (sala en línea) o #j=... (partida sin conexión). Vale al abrir y si se vuelve a tocar un enlace en la misma pestaña. */
+const cleanUrl=()=>{try{const u=new URL(location.href);u.searchParams.delete('s');history.replaceState(null,'',u.pathname+u.search)}catch(e){}};
+/* Enlaces: ?s=CODIGO o el antiguo #s=CODIGO (sala en línea), o #j=... (partida sin conexión). Vale al abrir y si se vuelve a tocar un enlace en la misma pestaña. */
 /* Aviso de enlace antiguo: la creación con QR/enlace de "sin conexión" se sustituyó por el modo de un
    solo móvil, así que un #j= ya no se puede reconstruir salvo que sea justo la partida que ya tenías
    abierta en este móvil. */
@@ -5214,13 +5214,24 @@ function oldLinkNotice(){
   cleanUrl();show('s-home');
   sheet(`<h3>Enlace antiguo</h3><p>Este enlace es de una versión antigua. Crea una partida nueva.</p><button class="act" id="olOk">Vale</button>`,()=>{$('olOk').onclick=closeSheet});
 }
+/* Enlace de sala (?s= o #s=) -> código, o '' si no hay. Con `propio`, solo si es de puntostudio.es (los de la app llegan del sistema: no se actúa sobre cualquier URL). */
+function codigoDeEnlace(url,propio){
+  try{const u=new URL(url,location.href);if(propio&&u.hostname!=='puntostudio.es')return '';
+    const m=(u.search+u.hash).match(/[?&#]s=([0-9A-Za-z]{5})/);return m?cleanRoomCode(m[1]):''}catch(e){return ''}
+}
+/* Abrir un enlace de sala: sin partida en marcha y con nombre guardado entra directamente en la sala (el mismo camino que «Unirme»); si no, va a «Unirme» con el código puesto.
+   Con otra sala o partida abierta nunca entra solo: quien juega tiene que confirmarlo. */
+function abreSala(code,auto){
+  openJoin(code);
+  if(auto&&code&&!ROOM&&!SOLO&&!game&&$('joinName').value.trim())$('doJoin').click();
+}
 function handleLink(ret){
-  const roomHash=(location.hash.match(/#s=([0-9A-Za-z]{5})/)||[])[1];
-  const fromLink=roomHash?null:parseLink(location.hash);
-  const roomCode=roomHash?cleanRoomCode(roomHash):(ret&&ret.room)||'';
-  if(roomHash||(ret&&ret.room)){
+  const hayEnlace=/[?&#]s=/.test(location.search+location.hash);
+  const fromLink=hayEnlace?null:parseLink(location.hash);
+  const roomCode=hayEnlace?codigoDeEnlace(location.href):(ret&&ret.room)||'';
+  if(hayEnlace||(ret&&ret.room)){
     cleanUrl();
-    if(ROOM&&ROOM.code===roomCode)renderAll();else openJoin(roomCode);
+    if(ROOM&&ROOM.code===roomCode)renderAll();else abreSala(roomCode,hayEnlace||!!(ret&&ret.auto));
     return true;
   }
   const got=fromLink||ret;
@@ -5237,10 +5248,18 @@ ROOM=loadRoom();
 let soloRestored=false;
 if(ROOM){loadS();syncGame();netJoin(ROOM.code)}else if(!(soloRestored=soloRestore()))game=load();
 let ret=null;
-if(!/#(s|j)=/.test(location.hash)){const r=lsGet('impostor-ret');if(r){lsDel('impostor-ret');ret=r.includes('#s=')?{room:codeFromInput(r)}:parseLink(r)}}
+if(!/#(s|j)=/.test(location.hash)&&!/[?&]s=/.test(location.search)){const r=lsGet('impostor-ret');if(r){lsDel('impostor-ret');ret=/[?&#]s=/.test(r)?{room:codeFromInput(r)}:parseLink(r)}}
 if(!handleLink(ret)){
   if(ROOM)renderAll();else if(soloRestored){}else if(game)enterGame();else show('s-home');
 }
+/* App nativa: el sistema abre la app con el enlace (Universal Links en iOS, App Links en Android). Con la app abierta llega appUrlOpen; en un arranque en frío,
+   getLaunchUrl. El mismo enlace puede llegar por los dos caminos: el segundo, en menos de 3 s, se ignora. */
+try{const AP=EN_APP&&window.Capacitor.Plugins&&window.Capacitor.Plugins.App;if(AP){
+  let ultEnl={c:'',t:0};
+  const abreEnlace=url=>{const c=codigoDeEnlace(url,true);if(!c||(c===ultEnl.c&&Date.now()-ultEnl.t<3000))return;ultEnl={c,t:Date.now()};handleLink({room:c,auto:true})};
+  if(AP.addListener)AP.addListener('appUrlOpen',e=>abreEnlace(e&&e.url));
+  if(AP.getLaunchUrl)Promise.resolve(AP.getLaunchUrl()).then(r=>r&&r.url&&abreEnlace(r.url)).catch(()=>{});
+}}catch(e){console.warn('enlaces',e)}
 if(ROOM){WK.cargaChat();WK.enLlamada=ssGet('impostor-wkcall-'+ROOM.code)!==0;if(ssGet('impostor-wkopen-'+ROOM.code))WK.abrir();else WK.pinta()}
 renderAcct();avLoad();iniciaCuentas();
 setInterval(tick,1000);

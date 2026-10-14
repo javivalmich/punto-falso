@@ -41,7 +41,7 @@ test('en la app, Privacidad/Términos/Soporte se abren con Browser y URL absolut
 
 test('en la app, el enlace de sala apunta a la web pública', async ({ page }) => {
   await page.goto('/');
-  expect(await page.evaluate(() => roomLink('ABCDE'))).toBe('https://puntostudio.es/punto-falso/#s=ABCDE');
+  expect(await page.evaluate(() => roomLink('ABCDE'))).toBe('https://puntostudio.es/punto-falso/?s=ABCDE');
   expect(await page.evaluate(() => linkFor('XYZ', ['a', 'b'], false))).toMatch(/^https:\/\/puntostudio\.es\/punto-falso\/#j=XYZ~a~b/);
 });
 

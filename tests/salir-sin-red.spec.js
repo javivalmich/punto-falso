@@ -4,6 +4,8 @@ const { test, expect } = require('@playwright/test');
 const { instalaRed, nuevoJugador, creaSala, unirse } = require('./fake-red');
 
 test.describe.configure({ timeout: 90000 });
+const abiertos = [];
+test.afterEach(async () => { while (abiertos.length) { try { await abiertos.pop().close(); } catch (e) {} } }); // los contextos de browser.newContext() no se cierran solos entre pruebas
 
 const puenteApp = () => {
   window.__estado = null;
@@ -17,7 +19,7 @@ const visible = (P) => P.evaluate(() => { Object.defineProperty(document, 'hidde
 const pantalla = (P) => P.evaluate(() => document.querySelector('.screen.on').id);
 
 async function sala(browser, jugadores = 3) {
-  const ctx = await browser.newContext({ viewport: { width: 390, height: 844 } });
+  const ctx = await browser.newContext({ viewport: { width: 390, height: 844 } }); abiertos.push(ctx);
   await instalaRed(ctx);
   const A = await nuevoJugador(ctx, 'pidAAAAAAAA');
   const codigo = await creaSala(A, 'Javi');
@@ -100,7 +102,7 @@ test.describe('«Salir» con la conexión caída', () => {
 test.describe('Al volver a la app, la sala se reconecta sola', () => {
   for (const [titulo, vuelve] of [['visibilitychange (web)', (P) => visible(P)], ['appStateChange de Capacitor (app)', (P) => P.evaluate(() => window.__estado({ isActive: true }))]]) {
     test(`tras estar en segundo plano con el canal muerto, ${titulo}`, async ({ browser }) => {
-      const ctx = await browser.newContext({ viewport: { width: 390, height: 844 } });
+      const ctx = await browser.newContext({ viewport: { width: 390, height: 844 } }); abiertos.push(ctx);
       await instalaRed(ctx);
       const A = await nuevoJugador(ctx, 'pidAAAAAAAA');
       const codigo = await creaSala(A, 'Javi');

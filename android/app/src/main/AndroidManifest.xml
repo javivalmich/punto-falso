@@ -24,6 +24,15 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
 
+            <!-- Enlaces de sala https://puntostudio.es/punto-falso/?s=CODIGO: abren la app si está instalada (App Links verificados con /.well-known/assetlinks.json).
+                 Android no distingue la query: solo se reclama la página /punto-falso/ (no soporte.html, terminos.html ni el resto) -->
+            <intent-filter android:autoVerify="true">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="https" android:host="puntostudio.es" android:path="/punto-falso/" />
+            </intent-filter>
+
         </activity>
 
         <provider
