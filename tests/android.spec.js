@@ -20,7 +20,7 @@ test.describe('Android', () => {
     await expect(page.locator('#s-home')).toBeVisible();
     await expect(page.locator('html')).toHaveClass(/en-android/);
     await page.click('#acct button');
-    await expect(page.locator('#sheet')).toContainText('Tu cuenta de Punto Ciego');
+    await expect(page.locator('#sheet')).toContainText('Tu cuenta');
     await expect(page.locator('#lgMail')).toBeVisible();
     await expect(page.locator('#lgA')).toHaveCount(0);
     expect(errores).toEqual([]);

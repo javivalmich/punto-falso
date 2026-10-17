@@ -8,7 +8,7 @@ import { fileURLToPath } from 'node:url';
 
 const raiz = join(dirname(fileURLToPath(import.meta.url)), '..');
 const destino = join(raiz, 'www');
-const incluir = ['index.html', 'manifest.json', 'privacidad.html', 'fonts', 'img', 'vendor', 'icons'];
+const incluir = ['index.html', 'manifest.json', 'privacidad.html', 'fonts', 'img', 'vendor', 'icons', 'assets'];
 
 rmSync(destino, { recursive: true, force: true });
 mkdirSync(destino);

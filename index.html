@@ -460,6 +460,34 @@ html.en-app #wk.kb :is(.wk-call,#wkVolver,#wkDesc,#wkAviso,#wkMicNota,#wkDiag,#w
 
 /* ---------- propuesta de victoria del impostor (votación por mayoría) ---------- */
 .proposebar{margin-top:18px;padding-top:14px;border-top:1px solid var(--line)}
+/* ---------- Editor de personaje (pantalla completa, como en Punto Ciego) ---------- */
+#editor{position:fixed;inset:0;z-index:64;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;background:radial-gradient(ellipse at 50% -10%,var(--glow) 0,transparent 60%),var(--bg);color:var(--text);
+  padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+#editor[hidden]{display:none}
+body.ed-on{overflow:hidden}
+body.ed-on #wkFab{display:none}
+.ed-in{max-width:460px;margin:0 auto;padding:12px 18px 34px}
+.ed-sub{color:var(--muted);margin:2px 0 6px;line-height:1.45}
+.ed-pegado{position:sticky;top:0;z-index:5;margin:0 -18px 8px;padding:4px 18px 10px;background:var(--bg);border-bottom:1px solid var(--line)}
+.ed-vista{position:relative;width:190px;height:200px;margin:2px auto 4px;color:var(--text)}
+.ed-vista .mira{position:absolute;inset:0;width:100%;height:100%;opacity:.9}
+.ed-vista .v3d{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);margin:0}
+.v3d{position:relative;display:block}
+.v3d canvas{position:absolute;left:0;top:0;width:100%;height:100%;touch-action:pan-y;-webkit-tap-highlight-color:transparent;cursor:grab}
+.v3d canvas:active{cursor:grabbing}
+.v3d canvas:focus-visible{outline:2px solid var(--red);outline-offset:2px;border-radius:12px}
+.v3d .ph{position:absolute;left:50%;top:50%;width:96px;height:96px;transform:translate(-50%,-50%);border-width:3px}
+.v3d.ok .ph{display:none}
+.ed-vista .ed-2d{position:absolute;left:50%;top:50%;width:120px;height:120px;transform:translate(-50%,-50%);border-width:3px}
+.ed-tip{margin:0;text-align:center;font-size:.82rem;color:var(--muted)}
+.ed-nota{color:var(--muted);font-size:.88rem;margin:-6px 0 0}
+#editor .sw{width:40px;height:40px;font-size:18px;line-height:1;color:#f5f5f7}
+#editor .act{margin-top:18px}
+.pestanas{display:grid;grid-template-columns:1fr 1fr;margin:14px 0 6px;border:1.5px solid var(--line);border-radius:14px;overflow:hidden}
+.pestanas button{border:0;border-radius:0;background:transparent;color:var(--muted);font-weight:800;padding:11px 8px;min-height:44px}
+.pestanas button.on{background:var(--text);color:var(--bg)}
+.sheet .ok{color:#2FA05A;font-weight:700;text-align:center;margin:0}
+.sheet .ok:empty{display:none}
 </style>
 </head>
 <body>
@@ -671,6 +699,20 @@ html.en-app #wk.kb :is(.wk-call,#wkVolver,#wkDesc,#wkAviso,#wkMicNota,#wkDiag,#w
 <div id="reveal" role="dialog" aria-live="polite"></div>
 <button id="wkFab" aria-label="Abrir el walkie-talkie"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v4M8 22h8"/></svg><b id="wkBadge" hidden>0</b></button>
 <div id="wkTalk" hidden role="status"></div>
+<div id="editor" role="dialog" aria-modal="true" aria-labelledby="edTit" hidden>
+  <div class="ed-in">
+    <button class="back" id="edVolver">‹ Volver</button>
+    <h2 id="edTit">Tu personaje</h2>
+    <p class="ed-sub" id="edSub"></p>
+    <div class="ed-pegado"><div class="ed-vista" id="edVista"></div><p class="ed-tip" id="edTip">Arrastra el personaje para girarlo</p></div>
+    <label class="lbl" for="edNom">Nombre de jugador</label>
+    <input class="field" id="edNom" maxlength="16" autocomplete="off" placeholder="Cómo te verán los demás">
+    <div id="edFilas"></div>
+    <p class="err" id="edErr" role="alert"></p>
+    <button class="act" id="edGuardar">Guardar cambios</button>
+    <button class="link" id="edCancelar">Cancelar</button>
+  </div>
+</div>
 <section id="wk" aria-hidden="false">
   <div class="fondo" id="wkFondo"></div>
   <div class="wk-caja" role="dialog" aria-label="Walkie-talkie">
@@ -3348,13 +3390,24 @@ const HEAD_IMG='data:image/webp;base64,UklGRsIMAABXRUJQVlA4WAoAAAAQAAAAvwAAvwAAQ
 const HEAD_MASK='data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAMAAAADACAAAAAB3tzPbAAAEQklEQVR42u1cbW7sIAxMrD3HnMTH5yRzkv56Ut82LF8G7Gz6o6qqADOMbRwgPo7nZ+/POa1n/fV3ikNAy48ktwS04dnkjYB2tUpOCOhA27SfgI52kHYSUBsLTJsIqF0ESBsIGMLvp3B6gd9L4fQDv4/C6Qp/B4XTF/x2CuIOf2P3pzv8jSKIR/wtY5wO4TdpID7x1w8kPvHXDyVO8VcPJl7x1w4nbvFXDih+8Rub0A78akhgz/zrnFzIFQNx7gBqQ0D9aiDuA1Bh8NdKLMj8n8fcfSGdiL2GRdpNALUPsoPBORs/2h5nK4PJBNDRhk0MXhPxo7cZLZ1YF8PPqJBWpxKAbXPtJaA74LcIKP5m/7oX7fMBXWz7nzwhrVEA06TUFQSA1dMhphaEqfmfTlcACzPYKifW7fDfXDnNVGAW/t8daxsBdYG/0LX4jD45BjqJwFT4C1KJ6fjRRUAdzT+yoCS0/ZgQWIMf7QTU1/wjA0tC2884gYX40UhAQ8y/+/OBi9lSQwJwfEamQfBHMqHrCZN4BqRGBHB4PifWMDYkwQUI5cSX5iHBBQipQAUBDSNALAVoRgBHbAXgKAzd1ImjE9AwHvCY0ENgRzaKbXi58sYWRu9i4Tjw1hxceFfCRC3MSiXqR8ZYD9jkxFjnMXJsPF2paIUtBHCvdQBTW4tPAfCkEmFcQmK7sFcTQv1nfvf0gXRvJ2az/Pg2H0DDzD3rQEQC3Iw5lQmkKFu73+oD/DYn5sR6Aa8j2OkG6xRIXm2I4ZyYZj5AcqcE/PebdQSSodXQQxTiGxLuEqCTAF24AKujEID0n/n/7Y5O/Flyd+lRwsraYWiAlBdWnCWAt152Jg5lySX/OsSMFW4gxvxoYr/G0M7/+Y6fZQLIh86PeqzIe5oVoFHoMzOg5nWAHEU3MAe/BmfDh3DlPRyUH4elkX0U4K8CtLAQLsN/8SlixTZahQaNn/ZXRdBJG1usdh8/uxJcl+ixFFPlcM2giP+CAB0xYLnvs3szHPN30EsOnDEhejEj1nQrVlHBPuiwKqW3y0aN4yYHkjl2RmbaTn9df+fgSS+mnIY17IHIYAo5QwSyoatz/LTdWAS2RQgxz1HGnJlsVPI0ufAAo4PhTNrA6QRsKGRX3R4C7Qgw1sOnNauLQMccoruPwtvvKgLXbTC8+dZJoM8T0fDv2jWEveV5ugvdGR+CcHG5TrZz4KRynSOLKuzAc6BU4dxLqz2vr621Fi3SS4yZzBiB7Z8sDZ8T0zf+qpK1cIy/Kp2mY/y+70rwufR3uL5CHUABhDchm8+w4JmBeP8AHU8Ugm83EP8VGPDdJuShAMBIwVQEVwBPLjTdhiS4AB8JIIIEdw6jCOEFN1YAzyvl3qLBeF7q9xJAFBu6qwJ4Nrb21p3Gs7W4TAIJLsA9oxC+pO60WwXwHHCEqDvtVwE8Z2R7CSCYE9xOAUQj8APTMfbCDNoj+wAAAABJRU5ErkJggg==';
 const BLANCO=7;
 const COLORES=[['Rojo','#D83A34'],['Azul','#2F6FE0'],['Verde','#2FA05A'],['Rosa','#E86FB0'],['Naranja','#EE8A2A'],['Amarillo','#F2D23A'],['Menta','#6FE0C0'],['Blanco','#F1ECE3'],['Morado','#8A55D8'],['Marrón','#9A6A45'],['Cian','#3CC7D6'],['Lima','#9BD83A'],['Granate','#9E2B4A'],['Gris','#8A8F96'],['Coral','#FF7F6B']];
-const ROPA=[['Negra',null],['Grafito','#4A4A52'],['Hueso','#E6DFD2'],['Oliva','#6B7A3A'],['Marino','#22406E'],['Burdeos','#7C1F2E'],['Camel','#B8894F'],['Roja','#FF4637'],['Rosa','#E58FB5'],['Lavanda','#9C8AD8']];
+const ROPA=[['Negra',null],['Grafito','#4A4A52'],['Hueso','#E6DFD2'],['Oliva','#6B7A3A'],['Marino','#22406E'],['Burdeos','#7C1F2E'],['Camel','#B8894F'],['Roja','#FF4637'],['Rosa','#E58FB5'],['Lavanda','#9C8AD8'],['Azul eléctrico','#2F6FE0'],['Cielo','#7FB7E6'],['Turquesa','#1FA3A0'],['Verde bosque','#1F6B3A'],['Lima','#A6D83A'],['Mostaza','#D9A21B'],['Naranja','#E8742A'],['Terracota','#B4533A'],['Berenjena','#5B2A6B'],['Fucsia','#D6338C']];
 const ESTAMPADOS=['Lisa','Rayas','Cuadros','Camuflaje'];
 const GUANTES=[['Blancos',null],['Negros','#2A2A2E'],['Rojos','#E5483A'],['Amarillos','#F2D23A'],['Azules','#2F6FE0'],['Verdes','#2FA05A']];
 const OJOS=[['Blancos',null],['Rojos','#FF4637'],['Cian','#5FE0F0'],['Amarillos','#FFD84A'],['Lima','#B6F24A'],['Rosas','#FF8FC8']];
-const REF_HEAD=[26.3,227.7,39.5,239.9,0];
+/* Pantalón y mochila: 0 = «como la sudadera» (lo que hacían antes, por eso los looks guardados sin estos campos se ven igual);
+   1..n = las mismas telas que ROPA. */
+const PIEZAS=[['Como la sudadera',null],...ROPA];
+const colorPieza=(i,cloth)=>i===0?ROPA[cloth][1]:ROPA[i-1][1];
+/* Estampado del pantalón: 0 = como el de la sudadera (lo que hacía antes), 1..4 = Lisa, Rayas, Cuadros, Camuflaje.
+   Zapatillas: 0 = del color del pantalón, 1..n = telas de ROPA. Mochila y zapatillas son siempre lisas. */
+const ESTAMPADOS_P=['Como la sudadera',...ESTAMPADOS];
+const ZAPATOS=[['Como el pantalón',null],...ROPA];
+const patPantalon=l=>l.pantsPat===0?l.pat:l.pantsPat-1;
+const colorZapato=l=>l.shoes===0?colorPieza(l.pants,l.cloth):ROPA[l.shoes-1][1];
+const LOOK0={hood:BLANCO,cloth:0,pat:0,glove:0,eye:0,pants:0,pack:0,pantsPat:0,shoes:0};
 function limpiaLook(l){l=l||{};const o={};const r=(v,n,d)=>Number.isInteger(v)&&v>=0&&v<n?v:d;
-  o.hood=r(l.hood,COLORES.length,BLANCO);o.cloth=r(l.cloth,ROPA.length,0);o.pat=r(l.pat,ESTAMPADOS.length,0);o.glove=r(l.glove,GUANTES.length,0);o.eye=r(l.eye,OJOS.length,0);return o}
+  o.hood=r(l.hood,COLORES.length,BLANCO);o.cloth=r(l.cloth,ROPA.length,0);o.pat=r(l.pat,ESTAMPADOS.length,0);o.glove=r(l.glove,GUANTES.length,0);o.eye=r(l.eye,OJOS.length,0);o.pants=r(l.pants,PIEZAS.length,0);o.pack=r(l.pack,PIEZAS.length,0);o.pantsPat=r(l.pantsPat,ESTAMPADOS_P.length,0);o.shoes=r(l.shoes,ZAPATOS.length,0);return o}
+const REF_HEAD=[26.3,227.7,39.5,239.9,0];
 const hexRGB=h=>[1,3,5].map(i=>parseInt(h.slice(i,i+2),16));
 const arrOfLook=l=>[l.hood,l.cloth,l.pat,l.glove,l.eye];
 const lookOfArr=a=>Array.isArray(a)&&a.length===5?limpiaLook({hood:a[0],cloth:a[1],pat:a[2],glove:a[3],eye:a[4]}):null;
@@ -3366,7 +3419,7 @@ function avLoad(){
     const c=document.createElement('canvas');c.width=im.naturalWidth;c.height=im.naturalHeight;const x=c.getContext('2d',{willReadFrequently:true});
     x.drawImage(im,0,0);const px=x.getImageData(0,0,c.width,c.height);
     x.clearRect(0,0,c.width,c.height);x.drawImage(lb,0,0,c.width,c.height);const lab=x.getImageData(0,0,c.width,c.height).data;
-    const L=new Uint8Array(c.width*c.height);for(let i=0;i<L.length;i++)L[i]=Math.round(lab[i*4]/50);
+    const L=new Uint8Array(c.width*c.height);for(let i=0;i<L.length;i++)L[i]=Math.round(lab[i*4]/30) /* la máscara guarda zona×30, igual que en Punto Ciego */;
     AV.B={w:c.width,h:c.height,px:px.data,L};AV.cache.clear();renderAll();renderAcct();
   }).catch(e=>console.warn('avatar',e));
 }
@@ -4892,7 +4945,7 @@ const APPLE_LOGO='<svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="t
 function renderAcct(){
   const html=USER?
     `${avImg(myLook(),'sm')}<span>${PERFIL&&PERFIL.name?'Hola, <b></b>':'Sesión iniciada'}</span><button data-a="menu">Mi cuenta</button>`
-    :`<button data-a="in">Entrar con mi cuenta de Punto Ciego</button>`;
+    :`<button data-a="in">Entrar o crear cuenta</button>`;
   ['acct','acct2'].forEach(id=>{
     const el=$(id);if(!el)return;
     if(el._h!==html){el._h=html;el.innerHTML=html;const b=el.querySelector('b');if(b)b.textContent=PERFIL.name}
@@ -4908,6 +4961,9 @@ function errorCuenta(e){
   if(m.includes('not confirmed'))return 'Tienes que confirmar el correo antes de entrar.';
   if(m.includes('rate')||m.includes('too many')||m.includes('security purposes'))return 'Demasiados intentos seguidos. Espera un minuto.';
   if(m.includes('invalid')&&m.includes('email'))return 'Ese correo no parece válido.';
+  if(m.includes('already')&&m.includes('registered'))return 'Ya hay una cuenta con ese correo. Entra con él.';
+  if(m.includes('password')&&(m.includes('at least')||m.includes('weak')))return 'La contraseña tiene que tener al menos 8 caracteres.';
+  if(m.includes('same')&&m.includes('password'))return 'La nueva contraseña tiene que ser distinta de la anterior.';
   if(m.includes('fetch')||m.includes('network'))return 'No hay conexión con el servidor de cuentas.';
   return (e&&e.message)||'Algo ha fallado. Prueba otra vez.';
 }
@@ -4935,38 +4991,86 @@ function avisoAppleSheet(){
   sheet(`<h3>Has entrado, con un aviso</h3><p>No hemos podido enlazar tu acceso con Apple en nuestro servidor. Puedes jugar con normalidad, pero para poder eliminar tu cuenta revocando también tu acceso con Apple, cierra sesión y vuelve a entrar con Apple cuando tengas buena conexión.</p>
     <button class="act" id="apOk">Entendido</button>`,()=>{$('apOk').onclick=closeSheet});
 }
-function loginSheet(){
-  sheet(`<h3>Tu cuenta de Punto Ciego</h3><p>Es la misma cuenta. Solo sirve para usar tu nombre y tu personaje: para jugar no hace falta.</p>
-    ${APPLE?`<button class="act apple" id="lgA">${APPLE_LOGO}<span>Iniciar sesión con Apple</span></button>`:''}
-    ${GOOGLE&&!EN_APP?`<button class="act google" id="lgG">${G_LOGO}<span>Entrar con Google</span></button>`:''}
+/* Dirección a la que vuelven los enlaces del correo (confirmar cuenta, nueva contraseña) y el inicio con Google/Apple:
+   esta misma página, para que se quede en Punto Falso. Si la app no corre en una web (p. ej. file: o un esquema propio), la pública. */
+const WEB_VUELTA=()=>/^https?:$/.test(location.protocol)&&!/^(localhost|127\.)/.test(location.hostname)?location.origin+location.pathname:'https://puntostudio.es/punto-falso/';
+let LOGIN={modo:'entrar',email:''};
+function loginSheet(modo){
+  if(modo)LOGIN.modo=modo;
+  const crear=LOGIN.modo==='crear';
+  sheet(`<h3>Tu cuenta</h3><p>Es la misma en Punto Falso y Punto Ciego. Sirve para jugar con tu nombre y tu personaje; para jugar no hace falta.</p>
+    <div class="pestanas" role="tablist"><button type="button" role="tab" aria-selected="${!crear}" class="${crear?'':'on'}" id="lgTabE">Entrar</button><button type="button" role="tab" aria-selected="${crear}" class="${crear?'on':''}" id="lgTabC">Crear cuenta</button></div>
+    ${APPLE?`<button class="act apple" id="lgA">${APPLE_LOGO}<span>${crear?'Registrarme con Apple':'Iniciar sesión con Apple'}</span></button>`:''}
+    ${GOOGLE&&!EN_APP?`<button class="act google" id="lgG">${G_LOGO}<span>${crear?'Registrarme con Google':'Entrar con Google'}</span></button>`:''}
     ${(APPLE||(GOOGLE&&!EN_APP))?'<p class="tiny" style="margin:14px 0 4px">o con tu correo</p>':''}
-    <input class="field" id="lgMail" type="email" autocomplete="username" inputmode="email" placeholder="Correo" autocapitalize="off" spellcheck="false">
-    <input class="field" id="lgPass" type="password" autocomplete="current-password" placeholder="Contraseña">
-    <p class="fine" style="margin:8px 2px 0;text-align:right"><a href="/punto-ciego/" data-ext="https://puntostudio.es/punto-ciego/" target="_blank" rel="noopener">¿Has olvidado tu contraseña?</a></p>
-    <p class="err" id="lgErr" role="alert"></p>
-    <button class="act" id="lgGo">Entrar</button>
+    <input class="field" id="lgMail" type="email" autocomplete="${crear?'email':'username'}" inputmode="email" placeholder="Correo" autocapitalize="off" spellcheck="false" value="${esc(LOGIN.email)}">
+    <input class="field" id="lgPass" type="password" autocomplete="${crear?'new-password':'current-password'}" placeholder="${crear?'Contraseña (mínimo 8 caracteres)':'Contraseña'}">
+    <p class="err" id="lgErr" role="alert"></p><p class="ok" id="lgOk" role="status"></p>
+    <button class="act" id="lgGo">${crear?'Crear cuenta':'Entrar'}</button>
+    ${crear?'':'<button class="link" id="lgOlvido">He olvidado la contraseña</button>'}
     <button class="link" id="lgNo">Ahora no</button>
-    <p class="fine">¿Aún no tienes cuenta? Créala en <a href="/punto-ciego/" data-ext="https://puntostudio.es/punto-ciego/" target="_blank" rel="noopener">Punto Ciego</a>.</p>`,()=>{
+    ${crear?'<p class="fine">Al crear una cuenta (mínimo 14 años) aceptas los <a href="terminos.html" data-ext="https://puntostudio.es/punto-falso/terminos.html" target="_blank" rel="noopener">términos</a> y la <a href="/privacidad/" data-ext="https://puntostudio.es/privacidad/" target="_blank" rel="noopener">política de privacidad</a>.</p>':''}`,()=>{
     $('lgNo').onclick=closeSheet;
+    $('lgMail').addEventListener('input',()=>{LOGIN.email=$('lgMail').value.trim()});
+    $('lgTabE').onclick=()=>{if(crear)loginSheet('entrar')};
+    $('lgTabC').onclick=()=>{if(!crear)loginSheet('crear')};
+    const err=t=>{$('lgOk').textContent='';$('lgErr').textContent=t};
     const go=async()=>{
-      const email=$('lgMail').value.trim(),password=$('lgPass').value;
-      if(!email||!password){$('lgErr').textContent='Escribe tu correo y tu contraseña.';return}
-      $('lgGo').disabled=true;$('lgErr').textContent='';
+      const email=$('lgMail').value.trim(),password=$('lgPass').value;LOGIN.email=email;
+      if(!email||!password){err(crear?'Escribe tu correo y una contraseña.':'Escribe tu correo y tu contraseña.');return}
+      if(crear&&password.length<8){err('La contraseña tiene que tener al menos 8 caracteres.');return}
+      $('lgGo').disabled=true;err('');
       try{
-        const sb=await loadSB();const {error}=await sb.auth.signInWithPassword({email,password});
-        if(error)throw error;closeSheet();toast('Sesión iniciada');
-      }catch(e){$('lgErr').textContent=errorCuenta(e);$('lgGo').disabled=false}
+        const sb=await loadSB();
+        if(crear){
+          const {data,error}=await sb.auth.signUp({email,password,options:{emailRedirectTo:WEB_VUELTA()}});
+          if(error)throw error;
+          if(!data.session){
+            LOGIN.modo='entrar';loginSheet();
+            $('lgOk').textContent='Cuenta creada. Te hemos mandado un correo para confirmarla: ábrelo y vuelve aquí para entrar.';
+            return;
+          }
+          closeSheet();toast('Cuenta creada');
+        }else{
+          const {error}=await sb.auth.signInWithPassword({email,password});
+          if(error)throw error;closeSheet();toast('Sesión iniciada');
+        }
+      }catch(e){err(errorCuenta(e));$('lgGo').disabled=false}
     };
     $('lgGo').onclick=go;$('lgPass').addEventListener('keydown',e=>{if(e.key==='Enter')go()});
+    if($('lgOlvido'))$('lgOlvido').onclick=async()=>{
+      const email=$('lgMail').value.trim();if(!email){err('Escribe primero tu correo.');return}
+      $('lgOlvido').disabled=true;err('');
+      try{const sb=await loadSB();const {error}=await sb.auth.resetPasswordForEmail(email,{redirectTo:WEB_VUELTA()});if(error)throw error;
+        $('lgOk').textContent='Si hay una cuenta con ese correo, te llegará un enlace para poner una contraseña nueva.'}
+      catch(e){err(errorCuenta(e))}
+      $('lgOlvido').disabled=false;
+    };
     const oauth=provider=>async()=>{
       try{
         if($('s-join').classList.contains('on')&&codeFromInput($('codeIn').value))lsSet('impostor-ret',roomLink(codeFromInput($('codeIn').value)));
         const sb=await loadSB();const {error}=await sb.auth.signInWithOAuth({provider,options:{redirectTo:baseWeb()}});
         if(error)throw error;
-      }catch(e){$('lgErr').textContent=errorCuenta(e)}
+      }catch(e){err(errorCuenta(e))}
     };
     if($('lgG'))$('lgG').onclick=oauth('google');
     if($('lgA'))$('lgA').onclick=EN_APP?async()=>{try{await entraConAppleNativo()}catch(e){if(!appleCancelado(e)){console.warn('apple',e);$('lgErr').textContent=errorCuenta(e)}}}:oauth('apple');
+  });
+}
+/* Enlace de «He olvidado la contraseña»: Supabase abre la sesión y avisa con PASSWORD_RECOVERY */
+function nuevaClaveSheet(){
+  if(EDIT)cerrarEditor();
+  sheet(`<h3>Nueva contraseña</h3><p>Escribe la contraseña que quieres usar a partir de ahora.</p>
+    <input class="field" id="ncPass" type="password" autocomplete="new-password" placeholder="Mínimo 8 caracteres">
+    <p class="err" id="ncErr" role="alert"></p>
+    <button class="act" id="ncGo">Guardar contraseña</button><button class="link" id="ncNo">Ahora no</button>`,()=>{
+    $('ncNo').onclick=closeSheet;
+    $('ncGo').onclick=async()=>{
+      const pw=$('ncPass').value;if(pw.length<8){$('ncErr').textContent='Mínimo 8 caracteres.';return}
+      $('ncGo').disabled=true;
+      try{const sb=await loadSB();const {error}=await sb.auth.updateUser({password:pw});if(error)throw error;closeSheet();toast('Contraseña cambiada')}
+      catch(e){$('ncErr').textContent=errorCuenta(e);$('ncGo').disabled=false}
+    };
   });
 }
 function logoutSheet(){
@@ -5012,52 +5116,125 @@ function cuentaMenuSheet(){
     $('acDel').onclick=deleteAccountSheet;
   });
 }
-/* ---------- Editar personaje y nombre (misma tabla profiles que Punto Ciego) ---------- */
-let EDIT=null;
-async function editCharSheet(){
-  closeSheet();sheet('<p class="hint-line">Cargando…</p>');
-  let raw=(PERFIL&&PERFIL.look)||{},name=(PERFIL&&PERFIL.name)||'';
+/* ---------- Editor de personaje y nombre (el mismo que Punto Ciego, misma tabla profiles) ----------
+   Pantalla completa con el personaje 3D de Punto Ciego (assets/personaje3d.js, se carga solo al abrir el editor).
+   Arrastrando se gira. Si el móvil no puede pintar 3D, se ve la cabeza 2D recoloreada. */
+let EDIT=null,PJ_CARGA=null,EDIT_AVISO=new Set();
+function cargaPJ(){
+  if(window.PJ)return Promise.resolve(window.PJ);
+  if(PJ_CARGA)return PJ_CARGA;
+  return PJ_CARGA=new Promise(ok=>{
+    const e=document.createElement('script');e.src='assets/personaje3d.js?v=6';
+    e.onload=()=>ok(window.PJ||null);e.onerror=()=>{PJ_CARGA=null;ok(null)};
+    document.head.appendChild(e);
+  });
+}
+const lkDe=l=>[COLORES[l.hood][1],ROPA[l.cloth][1]||'',GUANTES[l.glove][1]||'',OJOS[l.eye][1]||''].map(x=>x.replace('#','')).join('|')+'|'+l.pat+'|'+(colorPieza(l.pants,l.cloth)||'').replace('#','')+'|'+(colorPieza(l.pack,l.cloth)||'').replace('#','')+'|'+patPantalon(l)+'|'+(colorZapato(l)||'').replace('#','');
+function miraSVG(){ /* retícula del logo: dos cuartos rojos y dos claros */
+  const R=92,c=105,arc=(a0,a1,col)=>{const r=a=>(a-90)*Math.PI/180,x=a=>c+R*Math.cos(r(a)),y=a=>c+R*Math.sin(r(a));return `<path d="M${x(a0).toFixed(1)} ${y(a0).toFixed(1)} A${R} ${R} 0 0 1 ${x(a1).toFixed(1)} ${y(a1).toFixed(1)}" stroke="${col}" stroke-width="9" fill="none"/>`};
+  return `<svg class="mira" viewBox="0 0 210 210" aria-hidden="true">${arc(8,82,'var(--red)')}${arc(98,172,'var(--red)')}${arc(188,262,'currentColor')}${arc(278,352,'currentColor')}<path d="M105 0v22M105 188v22M0 105h22M188 105h22" stroke="currentColor" stroke-width="7"/></svg>`;
+}
+const PAT_T=['—','≡','▦','◍'];
+function edFila(t,k,lista,sw){
+  const l=EDIT.look;
+  return `<div class="ed-fila"><p class="lbl">${esc(t)}: <b>${esc(sw(l[k]).n)}</b></p><div class="swatches">${lista.map((_,i)=>{const x=sw(i);return `<button type="button" class="sw${l[k]===i?' on':''}" data-ed="${k}" data-v="${i}" aria-label="${esc(x.n)}" aria-pressed="${l[k]===i}" style="--c:${x.c}">${x.t||''}</button>`}).join('')}</div></div>`;
+}
+function edFilasHTML(){
+  const l=EDIT.look;
+  return edFila('Capucha','hood',COLORES,i=>({n:COLORES[i][0],c:COLORES[i][1]}))
+    +edFila('Sudadera','cloth',ROPA,i=>({n:ROPA[i][0],c:ROPA[i][1]||'#141416'}))
+    +edFila('Estampado de la sudadera','pat',ESTAMPADOS,i=>({n:ESTAMPADOS[i],c:'#222226',t:PAT_T[i]}))
+    +edFila('Pantalón','pants',PIEZAS,i=>i?{n:PIEZAS[i][0],c:PIEZAS[i][1]||'#141416'}:{n:PIEZAS[0][0],c:ROPA[l.cloth][1]||'#141416',t:'='})
+    +edFila('Estampado del pantalón','pantsPat',ESTAMPADOS_P,i=>i?{n:ESTAMPADOS[i-1],c:'#222226',t:PAT_T[i-1]}:{n:ESTAMPADOS_P[0],c:'#222226',t:'='})
+    +edFila('Zapatillas','shoes',ZAPATOS,i=>i?{n:ZAPATOS[i][0],c:ZAPATOS[i][1]||'#141416'}:{n:ZAPATOS[0][0],c:colorPieza(l.pants,l.cloth)||'#141416',t:'='})
+    +edFila('Mochila','pack',PIEZAS,i=>i?{n:PIEZAS[i][0],c:PIEZAS[i][1]||'#141416'}:{n:PIEZAS[0][0],c:ROPA[l.cloth][1]||'#141416',t:'='})
+    +'<p class="ed-nota">La mochila (con sus asas) y las zapatillas son siempre lisas.</p>'
+    +edFila('Guantes','glove',GUANTES,i=>({n:GUANTES[i][0],c:GUANTES[i][1]||'#F1ECE3'}))
+    +edFila('Ojos','eye',OJOS,i=>({n:OJOS[i][0],c:OJOS[i][1]||'#F1ECE3'}));
+}
+/* Vista del personaje: 3D si se puede; si no, la cabeza 2D */
+function edVistaHTML(){
+  const pj=window.PJ;
+  if(pj&&pj.estado==='fallo')return `${miraSVG()}<img class="av ed-2d" src="${avSrc(EDIT.look)}" alt="Tu personaje">`;
+  return `${miraSVG()}<div class="v3d" role="img" aria-label="Vista previa de tu personaje. Arrástralo para girarlo." style="width:150px;height:196px"><img class="ph av" src="${avSrc(EDIT.look)}" alt=""><canvas data-v="editor" data-w="150" data-h="196" data-lk="${lkDe(EDIT.look)}" data-anim="reposo" data-drag="1" tabindex="0" data-yaw=".35"></canvas></div>`;
+}
+function edPintaVista(){
+  const v=$('edVista');if(!v)return;
+  v.innerHTML=edVistaHTML();
+  const pj=window.PJ;$('edTip').hidden=!pj||pj.estado==='fallo';
+  if(pj&&pj.estado!=='fallo')pj.aplica();
+}
+function edActualiza(k){
+  $('edFilas').innerHTML=edFilasHTML();
+  const pj=window.PJ,cv=$('edVista').querySelector('canvas[data-v]');
+  if(cv&&pj&&pj.estado!=='fallo'){cv.dataset.lk=lkDe(EDIT.look);pj.aplica();pj.giraA('editor',k==='pack'?Math.PI:null)}
+  const ph=$('edVista').querySelector('img');if(ph)ph.src=avSrc(EDIT.look);
+}
+async function abrirEditor(nuevo){
+  closeSheet();
+  let raw=(PERFIL&&PERFIL.look)||{},name=(PERFIL&&PERFIL.name)||(nuevo?cleanName(lsGet('impostor-name','')||''):'');
+  EDIT={name,raw,look:limpiaLook(raw),nuevo:!!nuevo,cargando:true};
+  const ed=$('editor');
+  $('edTit').textContent=nuevo?'Crea tu personaje':'Tu personaje';
+  $('edSub').textContent=nuevo?'Así te verán los demás en las partidas. Se guarda en tu cuenta y es el mismo en Punto Ciego.':'Se guarda en tu cuenta y es el mismo en Punto Ciego.';
+  $('edGuardar').textContent=nuevo?'Guardar y continuar':'Guardar cambios';
+  $('edCancelar').textContent=nuevo?'Ahora no':'Cancelar';
+  $('edNom').value=name;$('edErr').textContent='';$('edGuardar').disabled=false;
+  $('edFilas').innerHTML=edFilasHTML();
+  ed.hidden=false;ed.scrollTop=0;document.body.classList.add('ed-on');
+  edPintaVista();
+  cargaPJ().then(pj=>{
+    if(!EDIT)return;
+    if(!pj){$('edTip').hidden=true;return}
+    pj.onCambio=()=>{if(EDIT)edPintaVista()};
+    edPintaVista();
+  });
+  /* el perfil de la nube manda (puede haber cambiado en Punto Ciego) */
   try{
     const sb=await loadSB();
     const {data,error}=await sb.from('profiles').select('username,look').eq('id',USER.id).maybeSingle();
     if(error)throw error;
-    if(data){raw=data.look||{};name=data.username||''}
+    if(data&&EDIT&&EDIT.cargando){
+      EDIT.raw=data.look||{};EDIT.look=limpiaLook(EDIT.raw);
+      const nomEl=$('edNom');if(nomEl&&nomEl.value===name){EDIT.name=data.username||'';nomEl.value=EDIT.name}
+      edActualiza();
+    }
   }catch(e){}
-  EDIT={name,raw,look:limpiaLook(raw)};
-  renderEditChar();
+  if(EDIT)EDIT.cargando=false;
 }
-function editFila(t,k,lista,sw){
-  const l=EDIT.look;
-  return `<div class="ed-fila"><p class="lbl">${esc(t)}: <b>${esc(sw(l[k]).n)}</b></p><div class="swatches">${lista.map((_,i)=>{const x=sw(i);return `<button type="button" class="sw${l[k]===i?' on':''}" data-ed="${k}" data-v="${i}" aria-label="${esc(x.n)}" style="--c:${x.c}"></button>`}).join('')}</div></div>`;
+function cerrarEditor(){
+  EDIT=null;$('editor').hidden=true;document.body.classList.remove('ed-on');
+  const cv=$('edVista').querySelector('canvas');if(cv)cv.remove();
+  if(window.PJ&&window.PJ.estado!=='fallo')window.PJ.aplica();
 }
-function renderEditChar(){
-  const html=`<h3>Tu personaje</h3><p>Se guarda en tu cuenta y se ve también en Punto Ciego.</p>
-    <div class="ed-preview">${avImg(EDIT.look)}</div>
-    <label class="lbl" for="edNom">Nombre de jugador</label><input class="field" id="edNom" maxlength="16" value="${esc(EDIT.name)}" autocomplete="off">
-    ${editFila('Capucha','hood',COLORES,i=>({n:COLORES[i][0],c:COLORES[i][1]}))}
-    ${editFila('Sudadera','cloth',ROPA,i=>({n:ROPA[i][0],c:ROPA[i][1]||'#141416'}))}
-    ${editFila('Estampado','pat',ESTAMPADOS,i=>({n:ESTAMPADOS[i],c:'#222226'}))}
-    ${editFila('Guantes','glove',GUANTES,i=>({n:GUANTES[i][0],c:GUANTES[i][1]||'#F1ECE3'}))}
-    ${editFila('Ojos','eye',OJOS,i=>({n:OJOS[i][0],c:OJOS[i][1]||'#F1ECE3'}))}
-    <p class="err" id="edErr" role="alert"></p>
-    <button class="act" id="edGuardar">Guardar cambios</button>
-    <button class="link" id="edCancelar">Cancelar</button>`;
-  sheet(html,()=>{
-    $('edCancelar').onclick=cuentaMenuSheet;
-    $('edGuardar').onclick=guardarPersonaje;
-    $('sheet').querySelectorAll('.sw').forEach(b=>b.onclick=()=>{
-      const nomEl=$('edNom');if(nomEl)EDIT.name=nomEl.value;
-      EDIT.look={...EDIT.look,[b.dataset.ed]:+b.dataset.v};
-      renderEditChar();
-    });
+function editorSalir(){
+  if(!EDIT)return;
+  const base=PERFIL?{name:PERFIL.name||'',look:limpiaLook(PERFIL.look)}:{name:'',look:limpiaLook({})};
+  const n=($('edNom').value||'').trim();
+  if(n===base.name&&JSON.stringify(EDIT.look)===JSON.stringify(base.look))return cerrarEditor();
+  sheet(`<h3>¿Salir sin guardar?</h3><p>Se perderán los cambios que has hecho en tu personaje.</p>
+    <button class="act danger" id="edSalirSi">Salir sin guardar</button><button class="link" id="edSalirNo">Seguir editando</button>`,()=>{
+    $('edSalirNo').onclick=closeSheet;
+    $('edSalirSi').onclick=()=>{closeSheet();cerrarEditor()};
   });
 }
+function editCharSheet(){abrirEditor(false)}
+$('edFilas').addEventListener('click',e=>{
+  const b=e.target.closest('.sw');if(!b||!EDIT)return;
+  EDIT.look={...EDIT.look,[b.dataset.ed]:+b.dataset.v};EDIT.cargando=false;
+  edActualiza(b.dataset.ed);
+});
+$('edNom').addEventListener('input',()=>{if(EDIT){EDIT.name=$('edNom').value;EDIT.cargando=false}});
+$('edVolver').onclick=editorSalir;
+$('edCancelar').onclick=editorSalir;
+$('edGuardar').onclick=guardarPersonaje;
 async function guardarPersonaje(){
+  if(!EDIT||!USER)return;
   const nomEl=$('edNom'),n=((nomEl?nomEl.value:EDIT.name)||'').trim().slice(0,16);
-  if(!n){$('edErr').textContent='Escribe un nombre de jugador.';return}
+  if(!n){$('edErr').textContent='Escribe un nombre de jugador.';if(nomEl)nomEl.focus();return}
   if(nombreOfensivo(n)){$('edErr').textContent=MSG_NOMBRE;return}
   $('edGuardar').disabled=true;$('edErr').textContent='';
-  const look={...EDIT.raw,...EDIT.look};
+  const look={...EDIT.raw,...limpiaLook(EDIT.look)};
   try{
     const sb=await loadSB();
     const {error}=await sb.from('profiles').upsert({id:USER.id,username:n,look,updated_at:new Date().toISOString()});
@@ -5072,9 +5249,10 @@ async function guardarPersonaje(){
     if(S&&S.pl&&S.pl.some(p=>p.p===PID)){if(iAmHost())hRename(PID,n);else bc('act',{k:'rename',p:PID,n})}
     netTrack();
   }
+  cerrarEditor();
   renderAcct();renderAll();
   ['myName','joinName'].forEach(fillMyName);
-  closeSheet();toast('Personaje guardado');
+  toast('Personaje guardado');
 }
 /* ---------- Eliminar cuenta (misma función de Supabase que Punto Ciego: eliminar_mi_cuenta) ---------- */
 function exitAnyGame(){
@@ -5153,7 +5331,7 @@ function deleteAccountConfirmSheet(){
 async function iniciaCuentas(){
   try{
     const sb=await loadSB();
-    sb.auth.onAuthStateChange((ev,ses)=>{guardaTokenApple(sb,ses);setTimeout(()=>trasSesion(ses),0)});
+    sb.auth.onAuthStateChange((ev,ses)=>{guardaTokenApple(sb,ses);setTimeout(()=>{trasSesion(ses);if(ev==='PASSWORD_RECOVERY')nuevaClaveSheet()},0)});
     const {data}=await sb.auth.getSession();
     await trasSesion(data.session);
     fetch(SUPA.url+'/auth/v1/settings',{headers:{apikey:SUPA.key}}).then(r=>r.json()).then(j=>{if(j&&j.external){if(j.external.google)GOOGLE=true;if(j.external.apple&&!ANDROID)APPLE=true}}).catch(()=>{});
@@ -5168,8 +5346,10 @@ async function trasSesion(ses){
   try{
     const {data,error}=await SB.from('profiles').select('username,look').eq('id',u.id).maybeSingle();
     if(error)throw error;
-    PERFIL=data?{name:data.username,look:limpiaLook(data.look)}:{name:'',look:limpiaLook({})};
+    PERFIL=data?{name:data.username||'',look:limpiaLook(data.look)}:{name:'',look:limpiaLook({})};
     lsSet(key,PERFIL);
+    /* cuenta recién creada (o sin personaje todavía): se abre el editor una vez para crearlo aquí mismo */
+    if(!PERFIL.name&&!EDIT_AVISO.has(u.id)){EDIT_AVISO.add(u.id);setTimeout(()=>{if(USER&&USER.id===u.id&&!EDIT&&!(PERFIL&&PERFIL.name))abrirEditor(true)},300)}
   }catch(e){console.warn('perfil',e);const c=lsGet(key);PERFIL=c?{name:c.name,look:limpiaLook(c.look)}:{name:'',look:limpiaLook({})}}
   renderAcct();renderAll();netTrack();
   if($('s-createoff').classList.contains('on')){autoName();renderSetup()}

@@ -97,11 +97,11 @@ test('en la app, el botón de Apple está siempre y sigue las guías en claro y 
   expect((await est()).bg).toBe('rgb(0, 0, 0)');
 });
 
-test('en la app, el inicio de sesión ofrece recuperar la contraseña con Browser', async ({ page }) => {
+test('en la app, el inicio de sesión ofrece recuperar la contraseña por correo y los enlaces vuelven a la web pública', async ({ page }) => {
   await page.goto('/');
   await page.click('#acct button');
-  await page.getByText('¿Has olvidado tu contraseña?').click();
-  expect(await page.evaluate(() => window.__abiertos)).toEqual(['https://puntostudio.es/punto-ciego/']);
+  await expect(page.getByRole('button', { name: 'He olvidado la contraseña' })).toBeVisible();
+  expect(await page.evaluate(() => WEB_VUELTA())).toBe('https://puntostudio.es/punto-falso/');
 });
 
 test('en la app, EN_LOCAL no vale aunque el host sea localhost (los parámetros de pruebas no actúan)', async ({ page }) => {
