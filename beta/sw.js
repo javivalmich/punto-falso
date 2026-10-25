@@ -8,7 +8,7 @@ const NUEVA='https://puntostudio.es/punto-falso/beta/';
 const vivo=()=>!(location.hostname==='javivalmich.github.io')?Promise.resolve(false):fetch(NUEVA+'manifest.json',{cache:'no-store'}).then(r=>r.ok).catch(()=>false);
 const ORIGEN_VIEJO=location.hostname==='javivalmich.github.io'; /* en puntostudio.es el destino siempre responde: la mudanza solo se hace desde la dirección antigua */
 const mudar=()=>!ORIGEN_VIEJO?Promise.resolve():Promise.all([caches.keys().then(k=>Promise.all(k.map(x=>caches.delete(x)))),self.registration.unregister()]).then(()=>self.clients.matchAll({type:'window'})).then(cs=>cs.forEach(c=>c.postMessage('mudanza'))).catch(()=>{});
-const VERSION='26';
+const VERSION='27';
 const CACHE='punto-falso-beta-v'+VERSION;
 const SHELL=['./','index.html','manifest.json','privacidad.html','soporte.html','terminos.html','fonts/outfit-latin.woff2','vendor/supabase-js/supabase.js','img/logo.webp','icons/favicon-32.png','icons/icon-192.png','icons/icon-512.png','icons/apple-touch-icon.png'];
 self.addEventListener('install',e=>{
