@@ -124,11 +124,17 @@ test.describe('Un corte corto no saca de la partida', () => {
     await expect.poll(() => B.evaluate(() => NET.st)).toBe('up');
   });
 
-  test('si el corte dura más de la gracia, pasa al modo sin conexión como antes', async ({ browser }) => {
+  test('aunque el corte dure mucho (móvil bloqueado un buen rato), sigue en la partida y no pasa al modo sin conexión', async ({ browser }) => {
     const { B } = await partidaDeTres(browser);
-    await B.evaluate(() => { NET.st = 'down'; NET.downAt = Date.now() + 60000; NET.okAt = Date.now() - NET_GRACIA - 1000; renderAll(); });
-    await expect(B.locator('#legacyBox')).toBeVisible();
-    await expect(B.locator('#netLine')).toContainText('Sin conexión');
+    // sin conexión desde hace 20 minutos
+    await B.evaluate(() => { NET.st = 'down'; NET.downAt = Date.now() + 60000; NET.okAt = Date.now() - 20 * 60e3; renderAll(); });
+    await expect(B.locator('#netLine')).toContainText('Reconectando');
+    await expect(B.locator('#legacyBox')).toBeHidden();
+    await expect(B.locator('#s-game')).toHaveClass(/on/);
+    // y al volver la conexión, sigue como si nada
+    await B.evaluate(() => { NET.downAt = Date.now() - 4000; });
+    await expect.poll(() => B.evaluate(() => NET.st), { timeout: 20000 }).toBe('up');
+    await expect(B.locator('#netLine')).toContainText('En línea');
   });
 
   test('al volver, el anfitrión antiguo no pisa al nuevo aunque tarde en llegarle su estado', async ({ browser }) => {

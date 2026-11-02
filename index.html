@@ -3504,11 +3504,10 @@ function loadRoom(){const r=lsGet('impostor-room');return r&&cleanRoomCode(r.cod
 
 const NET={lastSt:0,lastReq:0,lastTrack:'',ch:null,code:null,st:'off',cid:uid(8),t:Date.now(),grace:0,goneAt:0,resumed:false,hostSeen:false,downAt:0,R:{},okAt:0,desde:0,cedeDesde:0};
 const netUp=()=>NET.st==='up';
-/* Gracia de reconexión: un corte corto (bloquear el móvil, cambiar de app, mala cobertura) no saca a nadie de la partida en línea.
-   Mientras se reconecta, la partida sigue en modo sala (votación, revelación…) con «Reconectando…»; solo si el corte dura más de
-   NET_GRACIA se pasa al modo sin conexión (votar en voz alta), como antes. */
-const NET_GRACIA=45000;
-const salaViva=()=>netUp()||(!!NET.code&&!!NET.okAt&&Date.now()-NET.okAt<NET_GRACIA);
+/* Sin conexión no se sale de la partida: mientras sigas en la sala (no has pulsado «Salir», no han pasado las 5 h de CADUCA y no
+   has cerrado la app del todo), la partida sigue en modo sala con «Reconectando…» y se reintenta la conexión sin límite de tiempo.
+   Ya no se pasa al modo sin conexión (votar en voz alta / «Ver solución») por un corte, por largo que sea. */
+const salaViva=()=>netUp()||!!NET.code;
 async function netJoin(code){
   if(NET.code===code&&(NET.ch||NET.st==='connecting'))return;
   netLeave();
