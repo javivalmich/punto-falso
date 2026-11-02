@@ -94,6 +94,11 @@ body.red .act.sec{background:transparent;border-color:rgba(255,255,255,.55)}
 .tag{color:var(--red);font-weight:600;letter-spacing:.04em;font-size:clamp(.68rem,3.6vw,.82rem);margin-top:8px;white-space:nowrap}
 .lead{color:var(--muted);text-align:center;margin:18px auto 8px;max-width:30ch;font-size:1.05rem}
 .panel{background:var(--surface);border:1px solid var(--line);border-radius:20px;padding:6px 18px;margin:16px 0}
+.pend{background:var(--surface);border:1px solid var(--line);border-radius:20px;padding:16px 18px 4px;margin:16px 0 4px;text-align:center}
+.pend[hidden]{display:none}
+.pend p{color:var(--muted);margin:0 0 4px}
+.pend p b{color:var(--text)}
+.pend .link{margin-top:4px}
 details{padding:10px 0}
 summary{font-weight:800;cursor:pointer;list-style:none;display:flex;justify-content:space-between}
 summary::-webkit-details-marker{display:none}
@@ -178,7 +183,7 @@ input.codein::placeholder{color:var(--line)}
 .small{font-size:.95rem;font-weight:600;color:rgba(255,255,255,.72)}
 .word{color:#f5f5f7;font-weight:900;line-height:1.15;margin:6px 0 8px;overflow-wrap:break-word;letter-spacing:.01em;max-width:100%}
 .cat{color:var(--red);font-weight:700;letter-spacing:.08em;font-size:.8rem}
-.impword{font-weight:900;font-size:2.6rem;color:#fff;line-height:1;letter-spacing:.06em;margin:2px 0 14px}
+.impword{font-weight:900;font-size:2.6rem;color:var(--red);line-height:1;letter-spacing:.06em;margin:2px 0 14px}
 .hint{display:inline-block;background:#24242b;color:#fff;font-weight:800;font-size:1.3rem;padding:9px 20px;border-radius:14px;margin-top:4px;max-width:100%;overflow-wrap:break-word}
 .imp .note{margin-top:12px;font-weight:600;color:#fff}
 @media (prefers-reduced-motion:no-preference){
@@ -381,6 +386,30 @@ body.red .sheet .act{background:var(--red)}
 #wk.compact .wk-caja{pointer-events:auto;height:min(52vh,400px);box-shadow:0 -10px 30px rgba(0,0,0,.5)}
 #wk.compact #wkDiag{display:none}
 body.wk-compact .wrap.game{padding-bottom:calc(min(52vh,400px) + 24px)}
+/* el botón flotante del micro no debe quedar sobre «Bloquear» ni «✕» de los últimos jugadores */
+body.wk-fab #lbList{padding-bottom:84px}
+/* App iOS: la hoja del walkie cabe en la pantalla real (dvh, zona segura) y, con el teclado, en el área visible */
+html.en-app .wk-caja{height:min(84dvh,700px);max-height:100%;overflow-y:auto;-webkit-overflow-scrolling:touch}
+html.en-app #wkLista{min-height:72px}
+@media (max-height:740px){html.en-app #wkMicNota,html.en-app #wkDiag,html.en-app #wkNormas{display:none}}
+html.en-app #wk.kb .wk-caja{height:100%;padding-bottom:14px}
+/* App iOS: micro denegado en Ajustes (iOS no vuelve a preguntar). El aviso es compacto para que el botón de hablar y el campo de texto sigan a la vista */
+#wkMicOff{background:#0e0e11;color:#fff;border:2px solid var(--red);border-radius:14px;padding:8px 12px;margin-top:8px;font-size:.8rem;font-weight:600;line-height:1.3}
+#wkMicOff[hidden]{display:none}
+#wkMicOff p{margin:0}
+#wkMicOff button{margin-top:6px;padding:7px 14px;font-size:.88rem;color:#fff;border-color:#4a4a50}
+html.en-app #wk.mic-off #wkLista{min-height:0}
+html.en-app #wk.mic-off :is(#wkMicNota,#wkDiag,#wkNormas){display:none}
+html.en-app #wk.kb #wkMicOff{display:none}
+/* App iOS, sala de espera (compacto): un poco más alto y sin los botones que repiten la ✕ (Volver) o la información (quién está), para que quepan el campo y el botón de hablar */
+html.en-app #wk.compact .wk-caja{height:min(60dvh,460px)}
+html.en-app body.wk-compact .wrap.game{padding-bottom:calc(min(60dvh,460px) + 24px)}
+html.en-app #wk.compact :is(.wk-call,#wkVolver){display:none}
+html.en-app #wk.compact.mic-off #wkDesc{display:none}
+html.en-app #wk.compact #wkLista{min-height:40px}
+html.en-app #wk.mic-off #wkVolver{display:none}
+html.en-app #wk.compact.mic-off #wkLista{min-height:0}
+html.en-app #wk.kb :is(.wk-call,#wkVolver,#wkDesc,#wkAviso,#wkMicNota,#wkDiag,#wkNormas){display:none}
 
 /* hojas de confirmación y avisos por encima del walkie */
 .overlay{z-index:70}
@@ -437,6 +466,7 @@ body.wk-compact .wrap.game{padding-bottom:calc(min(52vh,400px) + 24px)}
       <p class="tag">EL JUEGO SOCIAL DEL IMPOSTOR</p>
     </div>
     <p class="lead">Todos tenéis la misma palabra menos el impostor. Cada uno la ve en su móvil.</p>
+    <div class="pend" id="pendBox" hidden><p id="pendTxt"></p><button class="act" id="pendGo">Volver a la partida</button><button class="link" id="pendNo">Descartarla</button></div>
     <button class="act" id="goCreate">Crear partida</button>
     <button class="act sec" id="goJoin">Unirme</button>
     <button class="act sec" id="goCreateOff">Jugar con un solo móvil</button>
@@ -469,11 +499,11 @@ body.wk-compact .wrap.game{padding-bottom:calc(min(52vh,400px) + 24px)}
         <div class="step"><button id="k2Minus" aria-label="Menos impostores">−</button><output id="k2Val">1</output><button id="k2Plus" aria-label="Más impostores">+</button></div>
       </div>
       <div class="row" style="flex-direction:column;align-items:stretch;gap:10px">
-        <div><div class="lbl">Pista al impostor</div><div class="sub" id="hint2Sub">Ve solo la categoría</div></div>
+        <div><div class="lbl">Pista al impostor</div><div class="sub" id="hint2Sub">Ve una palabra suelta y floja</div></div>
         <div class="seg" id="hint2Seg" role="radiogroup" aria-label="Nivel de pista para el impostor">
           <button type="button" data-v="0" aria-pressed="false">Sin pista</button>
-          <button type="button" data-v="1" aria-pressed="true">Categoría</button>
-          <button type="button" data-v="2" aria-pressed="false">Pista vaga</button>
+          <button type="button" data-v="1" aria-pressed="false">Categoría</button>
+          <button type="button" data-v="2" aria-pressed="true">Pista vaga</button>
         </div>
       </div>
       <div class="row">
@@ -491,6 +521,7 @@ body.wk-compact .wrap.game{padding-bottom:calc(min(52vh,400px) + 24px)}
   </section>
 
   <section class="screen" id="s-lobby">
+    <button class="back" id="lbBack">‹ Volver</button>
     <div class="gtop"><h2>Sala de espera</h2><button class="menubtn" id="lobbyMenu" aria-label="Menú">☰</button></div>
     <div class="panel codebox">
       <p style="margin:0 0 4px">Código de la sala</p>
@@ -508,6 +539,7 @@ body.wk-compact .wrap.game{padding-bottom:calc(min(52vh,400px) + 24px)}
   </section>
 
   <section class="screen" id="s-wait">
+    <button class="back" id="wtBack">‹ Volver</button>
     <div class="gtop"><h2>Entrarás en la siguiente ronda</h2><button class="menubtn" id="waitMenu" aria-label="Menú">☰</button></div>
     <p class="hint-line" id="wtMsg"></p>
   </section>
@@ -527,11 +559,11 @@ body.wk-compact .wrap.game{padding-bottom:calc(min(52vh,400px) + 24px)}
         <div class="step"><button id="kMinus" aria-label="Menos impostores">−</button><output id="kVal">1</output><button id="kPlus" aria-label="Más impostores">+</button></div>
       </div>
       <div class="row" style="flex-direction:column;align-items:stretch;gap:10px">
-        <div><div class="lbl">Pista al impostor</div><div class="sub" id="hintSub">Ve solo la categoría</div></div>
+        <div><div class="lbl">Pista al impostor</div><div class="sub" id="hintSub">Ve una palabra suelta y floja</div></div>
         <div class="seg" id="hintSeg" role="radiogroup" aria-label="Nivel de pista para el impostor">
           <button type="button" data-v="0" aria-pressed="false">Sin pista</button>
-          <button type="button" data-v="1" aria-pressed="true">Categoría</button>
-          <button type="button" data-v="2" aria-pressed="false">Pista vaga</button>
+          <button type="button" data-v="1" aria-pressed="false">Categoría</button>
+          <button type="button" data-v="2" aria-pressed="true">Pista vaga</button>
         </div>
       </div>
       <div class="row">
@@ -640,6 +672,7 @@ body.wk-compact .wrap.game{padding-bottom:calc(min(52vh,400px) + 24px)}
     <div class="wk-call"><span id="wkQuienes"></span></div>
     <button class="act" id="wkVolver">Volver con walkie abierto</button><button class="act sec" id="wkDesc">Desconectar walkie</button>
     <div id="wkAviso"></div>
+    <div id="wkMicOff" hidden><p>Has desactivado el micrófono. Actívalo en Ajustes → Punto Falso → Micrófono para hablar por el walkie. Los mensajes de texto siguen funcionando.</p><button class="act sec" id="wkAjustes">Abrir Ajustes</button></div>
     <div id="wkLista"></div>
     <div class="wk-escribe"><input id="wkTxt" maxlength="200" placeholder="Escribe un mensaje" autocomplete="off" aria-label="Mensaje para el grupo"><button id="wkEnviar">Enviar</button></div>
     <button id="wkPtt"><span id="wkPttTxt">Mantén para hablar</span><i id="wkNivel"></i></button>
@@ -3105,6 +3138,7 @@ function b64(u){let s='';for(let i=0;i<u.length;i+=0x8000)s+=String.fromCharCode
 function deb64(s){const b=atob(s),u=new Uint8Array(b.length);for(let i=0;i<b.length;i++)u[i]=b.charCodeAt(i);return u}
 /* Sonido y vibración: interruptores guardados en este móvil (por defecto encendidos) */
 const SETTINGS={sound:lsGet('impostor-sound',1)!==0,vibra:lsGet('impostor-vibra',1)!==0};
+const VIB_INI=[80,60,80],VIB_VOTO=[50,40,50]; /* partida lista / votación abierta: iguales para todos */
 const vibra=p=>{if(!SETTINGS.vibra)return;try{navigator.vibrate&&navigator.vibrate(p)}catch(e){}};
 
 /* ---------- Sonidos cortos del juego ----------
@@ -3168,12 +3202,11 @@ const EN_LOCAL=/^(localhost|127\.0\.0\.1)$/.test(location.hostname);
 const QS=new URLSearchParams(location.search);
 const HOST_GRACE=(EN_LOCAL&&(+QS.get('grace'))*1000)||30000; /* segundos sin anfitrión antes de relevarlo */
 
-let setup={n:0,k:1,hint:1,mask:ALL_MASK,secret:false};
-let rs={k:1,hint:1,mask:ALL_MASK,remote:false}; // ajustes de la sala en línea
+let setup={n:0,k:1,hint:2,mask:ALL_MASK,secret:false};
+let rs={k:1,hint:2,mask:ALL_MASK,remote:false}; // ajustes de la sala en línea
 let names=[];try{names=JSON.parse(localStorage.getItem('impostor-names')||'[]').map(cleanName).filter(Boolean).slice(0,18)}catch(e){names=[]}
 let game=null; // partida en marcha: {code,cfg,names,me,round,creator,remote,legacy}
 let ROOM=null; // sala en línea de este móvil: {code,name,creator,remote,joined,set}
-let vibrated=0;
 function save(){try{if(game&&game.legacy)localStorage.setItem('impostor-v2',JSON.stringify({code:game.code,names:game.names,me:game.me,round:game.round,creator:!!game.creator,remote:!!game.remote}));else if(!ROOM)localStorage.removeItem('impostor-v2')}catch(e){}}
 function load(){try{const s=JSON.parse(localStorage.getItem('impostor-v2')||'null');if(s&&s.code&&Array.isArray(s.names)){const cfg=decode(s.code);if(cfg&&s.names.length===cfg.n&&s.me>=1&&s.me<=cfg.n&&s.round>=1)return {code:s.code,cfg,names:s.names,me:s.me,round:s.round,creator:!!s.creator,remote:!!s.remote,legacy:true}}}catch(e){}return null}
 function saveNames(){try{localStorage.setItem('impostor-names',JSON.stringify(names))}catch(e){}}
@@ -3183,8 +3216,9 @@ function show(id){
   document.querySelectorAll('.screen').forEach(s=>s.classList.toggle('on',s.id===id));document.body.classList.remove('red');window.scrollTo(0,0);
   const wk=WKS.includes(id)&&!!(ROOM&&ROOM.remote); // el walkie solo existe con "Jugamos a distancia"
   document.querySelector('.wrap').classList.toggle('game',WKS.includes(id));
-  $('wkFab').classList.toggle('on',wk);
+  $('wkFab').classList.toggle('on',wk);document.body.classList.toggle('wk-fab',wk);
   if(!wk){WK.cerrar();WK.soltar()}else WK.modo();
+  if(id==='s-home')renderPend();
 }
 document.querySelectorAll('[data-go]').forEach(b=>b.onclick=()=>show(b.dataset.go));
 /* Efecto al pulsar en táctil: pone .prs en el botón al tocar (iOS no siempre aplica :active) y lo mantiene 120 ms para que se vea.
@@ -3192,7 +3226,7 @@ document.querySelectorAll('[data-go]').forEach(b=>b.onclick=()=>show(b.dataset.g
 (()=>{
   const SEL='button';
   const NOEXC='.google,.apple,.link,.chip,.switch,.seg button,.step button,.xbtn,.names .nm button,.grid button';
-  const NODELAY='#wkPtt,.step button,.flag,.kick,.blk,.wk-m button[data-i],.names .nm button';
+  const NODELAY='#wkPtt,.step button,.flag,.kick,.blk,.wk-m button[data-i],.names .nm button,#sheet .vbtn';
   const T=120,NAV=100;let cur=null; /* visible al menos 120 ms; antes de navegar, ~100 ms de estado oscuro */
   const quita=(b,t0)=>setTimeout(()=>b.classList.remove('prs'),Math.max(0,T-(Date.now()-t0)));
   document.addEventListener('touchstart',()=>{},{passive:true});
@@ -3212,7 +3246,7 @@ document.querySelectorAll('[data-go]').forEach(b=>b.onclick=()=>show(b.dataset.g
 
 let toastT;
 function toast(msg){const t=$('toast');t.textContent=msg;t.classList.add('on');clearTimeout(toastT);toastT=setTimeout(()=>t.classList.remove('on'),2600)}
-function sheet(html,bind){$('sheet').innerHTML=html;$('overlay').classList.add('on');bind&&bind();const f=$('sheet').querySelector('button,input');f&&f.focus()}
+function sheet(html,bind){$('sheet')._voto=null;$('sheet').innerHTML=html;$('overlay').classList.add('on');bind&&bind();const f=$('sheet').querySelector('button,input');f&&f.focus()}
 function closeSheet(){$('overlay').classList.remove('on')}
 $('overlay').addEventListener('click',e=>{if(e.target.id==='overlay')closeSheet()});
 
@@ -3282,6 +3316,9 @@ function lookOf(slot){
   return e&&e.a?lookOfArr(e.a):null;
 }
 
+/* App nativa (Capacitor): el WebView de iOS no es «otra app» ni un navegador integrado */
+const EN_APP=!!(window.Capacitor&&window.Capacitor.isNativePlatform&&window.Capacitor.isNativePlatform());
+if(EN_APP)document.documentElement.classList.add('en-app');
 /* ---------- Red: Supabase Realtime (mismo proyecto que Punto Ciego) ---------- */
 const SUPA={
   url:'https://qsmcdfyyxvqmesnbwsod.supabase.co',
@@ -3313,19 +3350,25 @@ const PID=(()=>{let p=lsGet('impostor-pid');if(typeof p!=='string'||p.length<8){
 const RALPH='23456789ABCDEFGHJKMNPQRSTUVWXYZ';
 function newRoomCode(){const a=crypto.getRandomValues(new Uint8Array(5));let s='';for(const b of a)s+=RALPH[b%RALPH.length];return s}
 function cleanRoomCode(x){const s=String(x||'').toUpperCase().replace(/[^0-9A-Z]/g,'');return s.length===5&&[...s].every(c=>RALPH.includes(c))?s:''}
-function codeFromInput(str){const m=String(str||'').match(/#s=([0-9A-Za-z]{5})/);return cleanRoomCode(m?m[1]:str)}
-const roomLink=code=>location.href.split('#')[0]+'#s='+code;
+function codeFromInput(str){const m=String(str||'').match(/[?&#]s=([0-9A-Za-z]{5})/);return cleanRoomCode(m?m[1]:str)} /* vale el enlace nuevo (?s=CODIGO) y el antiguo (#s=CODIGO) */
+const roomLink=code=>location.origin+location.pathname+'?s='+code; /* enlace de sala: ?s=CODIGO (como ?c= en Punto Ciego; así lo entienden los enlaces universales y App Links) */
 function saveRoom(){if(ROOM)lsSet('impostor-room',ROOM);else lsDel('impostor-room')}
 function loadRoom(){const r=lsGet('impostor-room');return r&&cleanRoomCode(r.code)&&typeof r.name==='string'&&r.name?r:null}
 
-const NET={lastSt:0,lastReq:0,lastTrack:'',ch:null,code:null,st:'off',cid:uid(8),t:Date.now(),grace:0,goneAt:0,resumed:false,hostSeen:false,downAt:0,R:{}};
+const NET={lastSt:0,lastReq:0,lastTrack:'',ch:null,code:null,st:'off',cid:uid(8),t:Date.now(),grace:0,goneAt:0,resumed:false,hostSeen:false,downAt:0,R:{},okAt:0,desde:0,cedeDesde:0};
 const netUp=()=>NET.st==='up';
+/* Gracia de reconexión: un corte corto (bloquear el móvil, cambiar de app, mala cobertura) no saca a nadie de la partida en línea.
+   Mientras se reconecta, la partida sigue en modo sala (votación, revelación…) con «Reconectando…»; solo si el corte dura más de
+   NET_GRACIA se pasa al modo sin conexión (votar en voz alta), como antes. */
+const NET_GRACIA=45000;
+const salaViva=()=>netUp()||(!!NET.code&&!!NET.okAt&&Date.now()-NET.okAt<NET_GRACIA);
 async function netJoin(code){
   if(NET.code===code&&(NET.ch||NET.st==='connecting'))return;
   netLeave();
-  NET.code=code;NET.st='connecting';NET.resumed=false;NET.hostSeen=false;NET.lastTrack='';renderAll();
+  NET.code=code;NET.st='connecting';NET.desde=Date.now();NET.resumed=false;NET.hostSeen=false;NET.lastTrack='';renderAll();
   let sb;try{sb=await loadSB()}catch(e){if(NET.code===code){NET.st='off';renderAll()}return}
   if(NET.code!==code||NET.ch)return;
+  purgaCanales(sb,'impostor-'+code);
   const ch=sb.channel('impostor-'+code,{config:{broadcast:{self:false,ack:false},presence:{key:NET.cid}}});
   NET.ch=ch;
   ch.on('broadcast',{event:'st'},m=>onState(m.payload));
@@ -3335,7 +3378,7 @@ async function netJoin(code){
   ch.on('presence',{event:'sync'},onPresence);
   ch.subscribe(status=>{
     if(NET.ch!==ch)return;
-    if(status==='SUBSCRIBED'){NET.st='up';NET.downAt=0;NET.lastSt=Date.now();NET.grace=Date.now()+1600;NET.resumed=false;NET.hostSeen=false;NET.lastTrack='';dbg('SUBSCRIBED');netTrack();bc('req',{});renderAll()}
+    if(status==='SUBSCRIBED'){NET.st='up';NET.downAt=0;NET.okAt=Date.now();NET.lastSt=Date.now();NET.grace=Date.now()+1600;NET.resumed=false;NET.cedeDesde=0;NET.hostSeen=false;NET.lastTrack='';dbg('SUBSCRIBED');netTrack();bc('req',{});renderAll()}
     else if(status==='CHANNEL_ERROR'||status==='TIMED_OUT'||status==='CLOSED'){if(NET.st!=='down'){NET.st='down';NET.downAt=Date.now()}renderAll()}
   });
 }
@@ -3350,9 +3393,25 @@ async function netJoinWait(code){
   }
   return false;
 }
-function netLeave(){
+function netLeave(retraso){
   const ch=NET.ch;NET.ch=null;NET.code=null;NET.st='off';NET.goneAt=0;NET.R={};NET.lastTrack='';
-  if(ch){try{SB&&SB.removeChannel(ch)}catch(e){}}
+  if(ch)quitaCanal(ch,retraso||0);
+}
+/* Cierra un canal SIN esperar a la red. Con el socket muerto (móvil que ha estado en segundo plano) el «leave» de supabase-js no contesta hasta agotar su plazo y,
+   mientras tanto, el canal sigue en su lista: un sb.channel() con el mismo nombre devolvería ese canal ya usado y .on() fallaría («cannot add callbacks after subscribe()»).
+   Por eso se cierra en segundo plano, con un máximo de 3 s tras el cual se desmonta a la fuerza y se saca de la lista. */
+function quitaCanal(ch,retraso){
+  const sb=SB;if(!sb)return;
+  let fin=false;
+  const limpia=()=>{if(fin)return;fin=true;try{ch.teardown&&ch.teardown()}catch(e){}try{const L=sb.realtime&&sb.realtime.channels,i=L?L.indexOf(ch):-1;if(i>=0)L.splice(i,1)}catch(e){}};
+  const ya=()=>{try{Promise.resolve(sb.removeChannel(ch)).then(limpia,limpia)}catch(e){limpia()}setTimeout(limpia,3000)};
+  if(retraso)setTimeout(ya,retraso);else ya();
+}
+function purgaCanales(sb,nombre){
+  try{(sb.getChannels?sb.getChannels():[]).filter(c=>c&&c.topic==='realtime:'+nombre).forEach(c=>{
+    try{c.teardown&&c.teardown()}catch(e){}
+    try{const L=sb.realtime&&sb.realtime.channels,i=L?L.indexOf(c):-1;if(i>=0)L.splice(i,1)}catch(e){}
+  })}catch(e){}
 }
 function hardReconnect(){if(!NET.code)return;const c=NET.code;netLeave();netJoin(c)}
 const myName=()=>ROOM?ROOM.name:'';
@@ -3416,8 +3475,12 @@ function nameTaken(){
   show('s-join');$('codeIn').value=code;$('joinName').value=nm;
   $('joinErr').textContent=`Ya hay alguien llamado «${nm}» en la sala. Añade una inicial.`;
 }
-function dropRoom(){
-  const c=ROOM&&ROOM.code;netLeave();WK.reset();WK.cerrar();ROOM=null;game=null;S=null;HV=null;MYV=null;phHtml='';
+function dropRoom(retraso){
+  const c=ROOM&&ROOM.code;
+  try{netLeave(retraso)}catch(e){console.warn('netLeave',e)}
+  try{WK.reset()}catch(e){console.warn('walkie',e)}
+  try{WK.cerrar()}catch(e){console.warn('walkie',e)}
+  ROOM=null;game=null;S=null;HV=null;MYV=null;phHtml='';
   if(c)lsDel('impostor-s-'+c);saveRoom();
 }
 
@@ -3439,7 +3502,7 @@ function okState(m){
   return !!(m.cfg&&Number.isInteger(m.cfg.seed)&&Array.isArray(m.pl)&&m.pl.length>=3&&m.pl.every(p=>p&&typeof p.p==='string'&&typeof p.n==='string'));
 }
 function newer(m,c){if(!c)return true;if(m.ep!==c.ep)return m.ep>c.ep;if(m.host!==c.host)return m.host<c.host;return m.sq>c.sq}
-const defSet=()=>({k:1,hint:1,mask:ALL_MASK,remote:false});
+const defSet=()=>({k:1,hint:2,mask:ALL_MASK,remote:false});
 /* rank se conserva mientras dure la sala (no se reinicia al volver a la sala de espera ni al empezar otra partida) */
 function lobbyState(set){return {ep:(S?S.ep:0)+1,sq:0,host:PID,ph:'lobby',set:{...defSet(),...set},cfg:null,pl:null,ban:[],pend:[],acc:[],left:[],round:1,dead:[],vt:null,res:null,prop:null,rank:S?cloneRank(S.rank):{}}}
 /* Construye la partida (game) a partir del estado de la sala */
@@ -3500,11 +3563,27 @@ function takeover(){
 function tick(){
   if(!ROOM)return;
   const now=Date.now();
-  if(NET.code&&NET.st==='down'&&NET.downAt&&now-NET.downAt>12000){NET.downAt=now;hardReconnect();return}
+  if(NET.code&&NET.st==='down'&&NET.downAt&&now-NET.downAt>3000){NET.downAt=now;hardReconnect();return}
+  /* conexión que se queda a medias («Conectando…» sin respuesta, o la librería no carga): se vuelve a intentar */
+  if(NET.code&&(NET.st==='connecting'||NET.st==='off')&&NET.desde&&now-NET.desde>(NET.st==='connecting'?15000:10000)){dbg('conexión atascada: reconecto');hardReconnect();return}
+  if(netUp())NET.okAt=now;
   if(!netUp()||now<NET.grace)return;
   const R=roster();NET.R=R;
-  if(!R[PID])return;
-  if(iAmHost()){if(!NET.resumed){NET.resumed=true;resumeHost()}}
+  if(!R[PID]){
+    /* mi presencia se ha perdido (p. ej. presence_state vacío tras una caída del canal): se vuelve a registrar */
+    if(!NET.sinYo)NET.sinYo=now;
+    else if(now-NET.sinYo>2000){NET.sinYo=now;NET.lastTrack='';netTrack()}
+    return;
+  }
+  NET.sinYo=0;
+  if(iAmHost()){if(!NET.resumed){
+    /* Vuelvo siendo el anfitrión, pero otro jugador ha tomado el relevo mientras no estaba (móvil bloqueado, otra app…): no se pisa
+       su estado con el mío, que es viejo. Se le pide el suyo y, al llegar (época mayor), dejo de ser el anfitrión. Si en 10 s no llega
+       nada, sigo yo como antes. */
+    const otro=Object.values(R).some(e=>e.h&&e.p!==PID&&!e.w);
+    if(otro){if(!NET.cedeDesde)NET.cedeDesde=now;if(now-NET.cedeDesde<10000){if(now-NET.lastReq>2500){NET.lastReq=now;bc('req',{})}return}}
+    NET.cedeDesde=0;NET.resumed=true;resumeHost();
+  }}
   else{
     if(hostPresent(R))NET.goneAt=0;
     else{
@@ -3531,7 +3610,7 @@ function tick(){
 /* ---------- Acciones del anfitrión ---------- */
 const aliveList=()=>{const a=[];for(let i=1;i<=S.pl.length;i++)if(!S.dead.includes(i)&&!S.left.includes(i))a.push(i);return a};
 const isDead=()=>!!(S&&game&&S.dead.includes(game.me));
-const mode=()=>(ROOM&&game&&netUp()&&S&&S.ph!=='lobby')?'room':'solo';
+const mode=()=>(ROOM&&game&&salaViva()&&S&&S.ph!=='lobby')?'room':'solo';
 const impsNow=()=>roundInfo(S.cfg,S.round).imps;
 const takenNames=()=>[...(S.pl||[]),...S.pend,...S.acc].map(p=>p.n.toLowerCase());
 function uniqueName(n,taken){let b=cleanName(n)||'Jugador',x=b,i=2;while(taken.includes(x.toLowerCase()))x=b.slice(0,12)+i++;return x}
@@ -3605,9 +3684,9 @@ function hVote(from,to,vid){
 /* Cuenta los votos y decide el resultado: empate, eliminado (y si ganan inocentes/impostores o sigue
    la ronda), o nadie ha votado. Es pura (no toca S ni SOLO) para que la compartan la sala en línea y el
    modo de un solo móvil. votesMap es {desde: hacia}. */
-function computeVoteResult(alive,cand,tie,votesMap,dead,imps){
+function computeVoteResult(alive,cand,tie,votesMap,dead,imps,voters){
   const counts={};cand.forEach(c=>counts[c]=0);
-  for(const f in votesMap){const to=votesMap[f],from=+f;if(alive.includes(from)&&cand.includes(to)&&to!==from)counts[to]++}
+  for(const f in votesMap){const to=votesMap[f],from=+f;if((voters||alive).includes(from)&&cand.includes(to)&&to!==from)counts[to]++}
   const max=Math.max(...cand.map(c=>counts[c]));
   const top=max>0?cand.filter(c=>counts[c]===max):[];
   const res={counts,top,elim:null,out:'none'};
@@ -3700,7 +3779,27 @@ function castVote(to){
 /* Cualquiera puede pasar a votar (no solo el anfitrión) */
 function castStartVote(){
   if(!S||S.ph!=='word'||!game)return;
-  if(iAmHost())hStartVote(aliveList(),false);else bc('act',{k:'startVote'});
+  if(iAmHost()){hStartVote(aliveList(),false);return}
+  bc('act',{k:'startVote'});
+  const ref=S.ep+'.'+S.sq; /* solo si no ha llegado ningún estado nuevo desde entonces (si el anfitrión la abrió y la canceló, no se reabre) */
+  setTimeout(()=>{if(ROOM&&S&&!iAmHost()&&S.ph==='word'&&S.ep+'.'+S.sq===ref)bc('act',{k:'startVote'})},2500);
+}
+/* El anfitrión que se va pasa el puesto al siguiente jugador conectado, sin esperar a que lo releven por ausencia */
+function hCedeHost(){
+  if(!ROOM||!S||!iAmHost()||!netUp())return;
+  const c=candidates(roster()).find(p=>p!==PID);if(!c)return;
+  S={...S,host:c,ep:S.ep+1,sq:0,vt:S.vt?{...S.vt,voted:[]}:null};
+  bc('st',S);
+}
+/* Salir de la sala (desde la sala de espera o con la partida empezada): avisa, cede el puesto si eras el anfitrión y suelta la sala */
+function salirDeSala(){
+  if(!ROOM)return;
+  /* «Salir» no depende de la red: el aviso a los demás y la cesión del puesto de anfitrión son envíos que no se esperan (y si fallan, se ignora), el cierre del
+     canal se hace en segundo plano (a los 400 ms, con máximo de 3 s) y lo local se borra siempre. */
+  try{if(game)castLeave()}catch(e){console.warn('salir: aviso',e)}
+  try{hCedeHost()}catch(e){console.warn('salir: cesión',e)}
+  try{dropRoom(400)}catch(e){console.warn('salir',e);ROOM=null;game=null;S=null;HV=null;MYV=null;try{saveRoom()}catch(x){}}
+  phHtml='';
 }
 function castLeave(){
   if(!game)return;
@@ -3711,7 +3810,7 @@ function castLeave(){
 function renderAll(){
   NET.R=roster();
   if(ROOM)routeScreen();
-  if(game){renderCard();renderTop();renderNet();renderPhase();renderReveal();renderJoinReq()}
+  if(game)[renderCard,renderTop,renderNet,renderPhase,renderReveal,renderJoinReq].forEach(f=>{try{f()}catch(e){dbg('render '+f.name+': '+(e&&e.message))}});
   renderVoteSheet();renderLobby();renderWait();checkPropose();WK.pinta();
 }
 /* En una sala en línea, la pantalla la decide el estado: sala de espera, juego o "entrarás en la siguiente ronda" */
@@ -3730,7 +3829,14 @@ function onEnterRoom(){
   if(ROOM.remote&&!lsGet('impostor-wk-'+ROOM.code)){lsSet('impostor-wk-'+ROOM.code,1);setTimeout(()=>{if(ROOM&&!WK.abierto)WK.abrir()},500)}
   if(WK.inapp())toast('Estás dentro de otra app: el micrófono no irá. Abre el enlace en Safari o Chrome.');
 }
-function onEnterGame(){cardKey='';vibrated=0;lastRoomPhase='';lastVoted={id:'',n:0};lockScreen()}
+/* Al crear o unirse a una sala, o al empezar su partida, se olvida del todo la partida de un solo móvil (SOLO, su revelación y sus temporizadores):
+   con SOLO viejo, el menú «Salir» de la sala tomaba el camino del modo de un solo móvil y no sacaba de la sala. */
+function limpiaSolo(){
+  clearTimeout(SOLOREV.tm);SOLOREV={id:null,t0:0,tm:null,html:'',vib:false};clearReveal();
+  if(SOLO){SOLO=null;soloSave()}
+  cardKey='';
+}
+function onEnterGame(){limpiaSolo();cardKey='';lastRoomPhase='';lastVoted={id:'',n:0};lockScreen()}
 let cardKey='';
 /* Pinta una tarjeta (palabra o impostor) en el elemento dado. La usan tanto la partida en línea/legacy
    como el modo de un solo móvil, para no duplicar la asignación de palabra ni el diseño de la tarjeta. */
@@ -3774,7 +3880,8 @@ function renderNet(){
     on=true;
     if(S&&S.pl){const R=NET.R||{};const n=S.pl.filter(p=>R[p.p]&&!R[p.p].w).length;t=`En línea · ${n} de ${S.pl.length} conectados`}
     else t='Conectado · esperando al anfitrión…';
-  }else if(NET.st==='connecting')t='Conectando…';
+  }else if(game&&mode()==='room')t='Reconectando…';
+  else if(NET.st==='connecting')t='Conectando…';
   else t='Sin conexión: votad en voz alta';
   const h=(on?'1':'0')+t;if(el._h===h)return;el._h=h;
   el.innerHTML='<span class="dot'+(on?'':' off')+'"></span><span></span>';el.lastChild.textContent=t;
@@ -3787,10 +3894,13 @@ function watchPhaseSounds(){
   if(mode()!=='room'||!S)return;
   if(S.ph!==lastRoomPhase){
     const prev=lastRoomPhase;lastRoomPhase=S.ph;
-    if(S.ph==='word'){SND.play('roundStart');if(prev)vibra(50)}
-    else if(S.ph==='vote'){SND.play('voteOpen');vibra([50,40,50])}
+    if(S.ph==='word')SND.play('roundStart');
+    else if(S.ph==='vote')SND.play('voteOpen');
     else if(S.ph==='reveal')SND.play('voteClose');
   }
+  /* Vibración: aviso de partida lista (una vez por partida y ronda, aunque se recargue) y de votación abierta (una vez por votación, también si se repite por empate) */
+  if(S.ph==='word'&&S.cfg){const k='ini'+S.cfg.seed+'.'+S.round;if(!seenRes(k)){markRes(k);vibra(VIB_INI,true)}}
+  if(S.ph==='vote'&&S.vt&&!seenRes('v'+S.vt.id)){markRes('v'+S.vt.id);if(!(S.dead||[]).includes(game.me))vibra(VIB_VOTO,true)}
   if(S.ph==='vote'&&S.vt){
     if(S.vt.id!==lastVoted.id)lastVoted={id:S.vt.id,n:S.vt.voted.length};
     else if(S.vt.voted.length>lastVoted.n){lastVoted.n=S.vt.voted.length;SND.play('vote')}
@@ -3807,12 +3917,18 @@ function renderPhase(){
     h=`<div class="phase"><div class="pt">Mirad vuestra tarjeta</div><p>Mantén pulsada la tarjeta para ver tu palabra. ${starter}</p>`+
       `<button class="act host" data-a="startVote">Pasar a votar</button>`+
       (host?`<button class="link" data-a="skip">Saltar a la siguiente ronda</button>`:'')+`</div>`;
+  }else if(room&&S.ph==='vote'&&S.vt){
+    /* La votación va en una hoja que se puede cerrar (tocando fuera, con «atrás» o para usar el walkie): aquí queda el acceso para volver a ella */
+    const voted=S.vt.voted.length,total=aliveList().length;
+    h=`<div class="phase"><div class="pt">Votación abierta</div><p>${voted} de ${total} han votado.</p>`+
+      `<button class="act host" data-a="openVote">${isDead()?'Ver la votación':'Ir a la votación'}</button></div>`;
   }
   if(h!==phHtml){phHtml=h;box.innerHTML=h}
 }
 $('phaseBox').addEventListener('click',e=>{
   const b=e.target.closest('[data-a]');if(!b||!game||!S)return;const a=b.dataset.a;
   if(a==='startVote')castStartVote();
+  else if(a==='openVote'){voteSheetMode='list';voteHtml='';renderVoteSheet()}
   else if(a==='skip'&&iAmHost())sheet(`<h3>¿Siguiente ronda?</h3><p>Se cierra esta ronda y todos pasan a una palabra nueva.</p>
     <button class="act" id="skYes">Siguiente ronda</button><button class="link" id="skNo">Cancelar</button>`,()=>{
     $('skNo').onclick=closeSheet;$('skYes').onclick=()=>{closeSheet();if(iAmHost())hNextRound()};
@@ -3830,7 +3946,18 @@ function renderVoteSheet(){
   voteSheetShown=true;
   const h=S.prop?proposeHtml():(voteSheetMode==='peek'?votePeekHtml():voteListHtml());
   if(h===voteHtml)return;
-  voteHtml=h;sheet(h);
+  if(voteHtml&&$('overlay').classList.contains('on')&&$('sheet')._voto===voteHtml&&mismaHoja(h,voteHtml)){parcheaHoja(h);voteHtml=h;$('sheet')._voto=h;return}
+  voteHtml=h;sheet(h);$('sheet')._voto=h;
+}
+/* Dos versiones de la hoja de votación que solo cambian en el recuento («X de N han votado») y en qué botón está marcado */
+const hojaBase=h=>h.replace(/<div class="vprog">.*?<\/span><\/div>/g,'').replace(/class="vbtn on"/g,'class="vbtn"').replace(/ aria-pressed="(true|false)"/g,'');
+const mismaHoja=(a,b)=>hojaBase(a)===hojaBase(b);
+function parcheaHoja(h){
+  const t=document.createElement('template');t.innerHTML=h;const el=$('sheet');
+  const pv=el.querySelectorAll('.vprog'),nv=t.content.querySelectorAll('.vprog');
+  pv.forEach((x,i)=>{if(nv[i]&&x.innerHTML!==nv[i].innerHTML)x.innerHTML=nv[i].innerHTML});
+  const pb=el.querySelectorAll('[aria-pressed]'),nb=t.content.querySelectorAll('[aria-pressed]');
+  pb.forEach((x,i)=>{const n=nb[i];if(!n)return;x.classList.toggle('on',n.classList.contains('on'));x.setAttribute('aria-pressed',n.getAttribute('aria-pressed'))});
 }
 function voteListHtml(){
   const vt=S.vt,dead=isDead(),alive=aliveList(),host=iAmHost();
@@ -3945,6 +4072,18 @@ async function shareRoom(){
   try{if(navigator.share){await navigator.share({title:'Punto Falso',text:`Entra en mi sala de Punto Falso (código ${ROOM.code}):`,url});return}}catch(e){if(e&&e.name==='AbortError')return}
   try{await navigator.clipboard.writeText(url);toast('Enlace copiado')}catch(e){toast('No se pudo copiar. Que escaneen el QR.')}
 }
+/* «‹ Volver» en la sala de espera: pide confirmación. Al salir, la sala sigue sin ti: si eras el anfitrión, otro jugador conectado lo pasa a ser
+   (takeover por presencia) y, si no queda nadie, la sala deja de existir. */
+function salirSalaSheet(){
+  if(!ROOM)return;
+  const otros=connectedList(NET.R||{}).filter(e=>e.p!==PID).length;
+  const nota=iAmHost()?(otros>0?'Como eres el anfitrión, otro jugador pasará a serlo.':'Eres el único en la sala: se cerrará.'):'Podrás volver a entrar con el código de la sala.';
+  sheet(`<h3>¿Salir de la sala?</h3><p>${nota}</p><button class="act" id="slYes">Salir</button><button class="link" id="slNo">Quedarme</button>`,()=>{
+    $('slNo').onclick=closeSheet;
+    $('slYes').onclick=()=>{try{closeSheet();salirDeSala()}finally{show('s-home')}};
+  });
+}
+$('lbBack').onclick=salirSalaSheet;$('wtBack').onclick=salirSalaSheet;
 function renderWait(){
   if(!ROOM||!$('s-wait').classList.contains('on'))return;
   const acc=S&&S.acc.some(p=>p.p===PID);
@@ -3965,14 +4104,14 @@ CATS.forEach((c,i)=>{const b=document.createElement('button');b.className='chip'
 $('k2Minus').onclick=()=>{rs.k--;renderRoomSetup()};$('k2Plus').onclick=()=>{rs.k++;renderRoomSetup()};
 bindHintSeg('hint2Seg',v=>{rs.hint=v;renderRoomSetup()});$('remote2Sw').onclick=()=>{rs.remote=!rs.remote;renderRoomSetup()};
 $('allCats2').onclick=()=>{rs.mask=rs.mask===ALL_MASK?0:ALL_MASK;renderRoomSetup()};
-$('goCreate').onclick=()=>{$('createErr').textContent='';fillMyName('myName');renderRoomSetup();show('s-create')};
+$('goCreate').onclick=()=>{rs.remote=false;$('createErr').textContent='';fillMyName('myName');renderRoomSetup();show('s-create')};
 $('doCreateRoom').onclick=async()=>{
   const name=cleanName($('myName').value),err=$('createErr'),btn=$('doCreateRoom');
   if(!name){err.textContent='Escribe tu nombre (de 1 a 14 caracteres).';return}
   if(!rs.mask)return;
   err.textContent='';btn.disabled=true;btn.textContent='Creando la sala…';
   try{
-    if(ROOM)dropRoom();
+    descartaPend();limpiaSolo();if(ROOM)dropRoom();
     for(let i=0;i<6;i++){
       const code=newRoomCode();S=null;
       const ok=await netJoinWait(code);
@@ -4004,13 +4143,21 @@ async function doJoinRoom(codeRaw,nameRaw){
   if(!code)return 'Ese código no es válido. Son 5 letras o números (sin 0, O, 1, I ni L).';
   let name=cleanName(nameRaw);
   if(!name)return 'Escribe tu nombre (de 1 a 14 caracteres).';
-  if(ROOM)dropRoom();
+  descartaPend();limpiaSolo();if(ROOM)dropRoom();
   S=null;
-  if(!await netJoinWait(code)){netLeave();return 'No hay conexión con el servidor. Prueba otra vez.'}
-  const t0=Date.now();
-  while(Date.now()-t0<4500&&!(S&&hostPresent(roster())))await sleep(200);
+  /* Hasta 3 intentos: si el canal cae (channel_crash) o la presencia llega vacía, se reconecta y se vuelve a esperar antes de decir que la sala no existe */
+  for(let intento=1;;intento++){
+    if(!await netJoinWait(code)){netLeave();return 'No hay conexión con el servidor. Prueba otra vez.'}
+    const t0=Date.now();
+    while(Date.now()-t0<4500&&!(S&&hostPresent(roster()))){
+      if(NET.st==='down'&&NET.downAt&&Date.now()-NET.downAt>1500)break; /* el canal se ha caído: no esperes a agotar el plazo */
+      await sleep(200);
+    }
+    if(S&&hostPresent(roster()))break;
+    if(intento>=3){netLeave();S=null;return 'No encuentro esa partida, revisa el código.'}
+    hardReconnect();
+  }
   const R=roster();
-  if(!S||!hostPresent(R)){netLeave();S=null;return 'No encuentro esa partida, revisa el código.'}
   if(S.ban.includes(PID)){netLeave();S=null;return 'El anfitrión te ha sacado de esa sala.'}
   const inList=S.pl&&S.pl.find(p=>p.p===PID);
   if(inList)name=inList.n; /* vuelve a su sitio con su nombre */
@@ -4094,8 +4241,7 @@ function enterGame(){cardKey='';show('s-game');renderAll();lockScreen()}
 function setCardOpen(cardEl,on,vibKey){
   const isImp=cardEl.classList.contains('imp');
   cardEl.classList.toggle('open',on);
-  /* Anti-chivato: el mismo fondo, la misma vibración y los mismos tiempos para todos los papeles */
-  if(on&&vibrated!==vibKey){vibrated=vibKey;vibra([90,60,90,60,220])}
+  /* Anti-chivato: el mismo fondo y los mismos tiempos para todos los papeles; abrir la tarjeta no vibra */
   return isImp;
 }
 function bindHoldToReveal(cardEl,onOpen){
@@ -4113,7 +4259,7 @@ function reveal(on){
 bindHoldToReveal($('card'),reveal);
 
 /* ---------- Revelación ---------- */
-let REV={id:null,t0:0,tm:null,html:'',vib:false,vibOut:false,vib3:false,vibEnd:false,advanced:false};
+let REV={id:null,t0:0,tm:null,html:'',vib:false,vibEnd:false,advanced:false};
 const seenRes=id=>{try{return (sessionStorage.getItem('impostor-seen')||'').split(',').includes(id)}catch(e){return false}};
 const markRes=id=>{try{sessionStorage.setItem('impostor-seen',((sessionStorage.getItem('impostor-seen')||'')+','+id).slice(-60))}catch(e){}};
 function outText(r,imps,room){
@@ -4135,7 +4281,7 @@ function renderReveal(){
     return;
   }
   const r=S.res,imps=impsNow(),nm=i=>esc(game.names[i-1]);
-  if(REV.id!==r.id){REV.id=r.id;REV.t0=seenRes(r.id)?Date.now()-99999:Date.now();REV.vib=false;REV.vibOut=false;REV.vib3=false;REV.vibEnd=false;REV.advanced=false;markRes(r.id)}
+  if(REV.id!==r.id){REV.id=r.id;REV.t0=seenRes(r.id)?Date.now()-99999:Date.now();REV.vib=false;REV.vibEnd=false;REV.advanced=false;markRes(r.id)}
   const age=Date.now()-REV.t0,stage=age<2200?0:age<4400?1:age<6000?2:3;
   const AUTO_AT=12000; /* 6s de animación + 6s de cuenta atrás visible antes de pasar solo de ronda */
   clearTimeout(REV.tm);
@@ -4159,7 +4305,6 @@ function renderReveal(){
     if(stage>=2&&!REV.vib){
       REV.vib=true;if(age<7000)vibra(isImp?[90,60,90,60,220]:[60]);
       SND.play(isImp?'revealImp':'revealInn');
-      if(r.elim===game.me&&!REV.vibOut){REV.vibOut=true;setTimeout(()=>vibra([110,70,110,70,110,70,260]),260)}
     }
     if(stage===3){
       if(!r.shortcut){
@@ -4173,7 +4318,6 @@ function renderReveal(){
       }else h+=`<p style="margin-top:12px">${esc(outText(r,imps,true))}</p>`;
       const lab=r.out==='tie'?'Repitiendo la votación':r.out==='inn'||r.out==='imp'?`Ronda ${S.round+1}`:'Seguís jugando';
       const secs=Math.max(0,Math.ceil((AUTO_AT-age)/1000));
-      if(secs===3&&!REV.vib3){REV.vib3=true;vibra([60,50,60])}
       h+=`<p class="wait">${lab} en ${secs}…</p>`;
       if(host)h+=`<button class="act" data-a="now">Ir ya</button>`;
       if(age>=AUTO_AT&&host&&!REV.advanced){REV.advanced=true;hAfter();return}
@@ -4288,7 +4432,7 @@ function menuResetRankHtml(){
     <button class="act" data-a="menuResetRankYes">Reiniciar</button><button class="link" data-a="menuBack">Cancelar</button>`;
 }
 function menuExitHtml(){
-  if(SOLO)return `<h3>¿Terminar la partida?</h3><p>Se perderá la ronda actual y el marcador de esta sesión.</p>
+  if(SOLO&&!ROOM)return `<h3>¿Terminar la partida?</h3><p>Se perderá la ronda actual y el marcador de esta sesión.</p>
     <button class="act" data-a="menuExitYes">Terminar</button><button class="link" data-a="menuBack">Seguir jugando</button>`;
   const notes=[];
   if(iAmHost())notes.push('Si sales, otro jugador pasará a ser el anfitrión.');
@@ -4313,11 +4457,12 @@ $('menuSheetEl').addEventListener('click',e=>{
   else if(a==='menuAcct'){closeMenu();cuentaMenuSheet()}
   else if(a==='menuExit')menuSheet(menuExitHtml());
   else if(a==='menuExitYes'){
-    closeMenu();
-    if(SOLO){clearReveal();SOLO=null;game=null;soloSave()}
-    else if(ROOM){if(game)castLeave();dropRoom()}
-    else{game=null;save()}
-    phHtml='';show('s-home');
+    try{
+      closeMenu();
+      if(ROOM)salirDeSala();
+      else if(SOLO){clearReveal();SOLO=null;game=null;soloSave()}
+      else{game=null;save()}
+    }finally{phHtml='';show('s-home')}
   }
 });
 ['gameMenu','lobbyMenu','waitMenu','scMenu','sdMenu','svMenu'].forEach(id=>{$(id).onclick=menuOpenFresh});
@@ -4325,11 +4470,21 @@ $('menuSheetEl').addEventListener('click',e=>{
 /* Que la pantalla no se apague durante la partida */
 let WL=null;
 async function lockScreen(){try{if((game||ROOM)&&navigator.wakeLock&&!WL){WL=await navigator.wakeLock.request('screen');WL.addEventListener('release',()=>{WL=null})}}catch(e){}}
-document.addEventListener('visibilitychange',()=>{
-  if(document.hidden)return;
-  if(NET.code&&(!NET.ch||NET.ch.state!=='joined'))hardReconnect();
+/* Al irse y volver a la app (visibilitychange en la web, appStateChange de Capacitor): con el móvil en segundo plano el socket muere sin avisar y el canal puede seguir
+   «joined» sin estarlo. Si el canal no está unido, o se ha estado fuera más de 3 s, se reconecta de cero (la recuperación de channel_crash se encarga del resto:
+   volver a registrar la presencia, pedir el estado, relevar al anfitrión). Los dos eventos pueden llegar juntos: el segundo, en menos de 0,8 s, se ignora. */
+const VUELTA={fuera:0,ult:0};
+function alIrse(){if(!VUELTA.fuera){lsSet('impostor-vivo',Date.now());VUELTA.fuera=Date.now()}}
+function alVolver(){
+  const t=VUELTA.fuera;VUELTA.fuera=0;
+  if(Date.now()-VUELTA.ult<800)return;VUELTA.ult=Date.now();
+  const caducada=caducaSiVieja();marcaVivo();if(caducada)return;
   lockScreen();
-});
+  if(!NET.code)return;
+  if(!NET.ch||NET.ch.state!=='joined'||(t&&Date.now()-t>3000)){dbg('vuelta: reconecto');hardReconnect()}
+}
+document.addEventListener('visibilitychange',()=>{document.hidden?alIrse():alVolver()});
+try{const AP=EN_APP&&window.Capacitor.Plugins&&window.Capacitor.Plugins.App;if(AP&&AP.addListener)AP.addListener('appStateChange',s=>{s&&s.isActive?alVolver():alIrse()})}catch(e){}
 window.addEventListener('online',()=>{if(NET.code&&NET.st!=='up')hardReconnect()});
 
 /* ---------- Walkie-talkie ----------
@@ -4391,7 +4546,7 @@ const WK={
   ruido(dur=.1,vol=.16){const c=this.ctx();if(!c)return;const n=Math.floor(c.sampleRate*dur),b=c.createBuffer(1,n,c.sampleRate),d=b.getChannelData(0);
     for(let i=0;i<n;i++)d[i]=(Math.random()*2-1)*vol*(1-i/n);const s=c.createBufferSource();s.buffer=b;s.connect(this.bus);s.start()},
   /* WhatsApp, Instagram, etc. abren la web en un navegador integrado que no deja usar el micro */
-  inapp(){const ua=navigator.userAgent;return /FBAN|FBAV|FB_IAB|Instagram|WhatsApp|Line\/|Snapchat|TikTok|Twitter|MicroMessenger|; wv\)/i.test(ua)||(/iPhone|iPad|iPod/.test(ua)&&!/Safari\//.test(ua)&&!/CriOS|FxiOS|EdgiOS|OPiOS/.test(ua))},
+  inapp(){if(EN_APP)return false;const ua=navigator.userAgent;return /FBAN|FBAV|FB_IAB|Instagram|WhatsApp|Line\/|Snapchat|TikTok|Twitter|MicroMessenger|; wv\)/i.test(ua)||(/iPhone|iPad|iPod/.test(ua)&&!/Safari\//.test(ua)&&!/CriOS|FxiOS|EdgiOS|OPiOS/.test(ua))},
   noPuede(){
     if(!ROOM)return game?'Sin conexión: el walkie necesita internet':'Entra en una partida para usar el walkie';
     if(!netUp())return 'Sin conexión: el walkie necesita internet';
@@ -4467,12 +4622,21 @@ const WK={
     this.stream=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true,noiseSuppression:true,autoGainControl:true}});this.src=null;
     lsSet('impostor-micok',1);$('wkMicNota').hidden=true;
   },
+  /* App iOS: si el micro está denegado, iOS no vuelve a preguntar; no se intenta grabar (el botón queda desactivado y se avisa) */
+  denegado:false,
+  async reintentaMicro(){
+    if(!(EN_APP&&this.denegado&&this.abierto)||this._sonda)return;this._sonda=true;
+    try{const s=await navigator.mediaDevices.getUserMedia({audio:true});s.getTracks().forEach(t=>t.stop());this.denegado=false}catch(e){}
+    this._sonda=false;this.pinta()
+  },
   async empieza(){
+    if(EN_APP&&this.denegado){this.pinta();return}
     const no=this.noPuede();if(no){this.estado(no);return}
     if(this.rec)return;const c=this.ctx();
     const r=this.rec={id:uid(10),n:0,t0:Date.now(),pico:0,partes:[],arrancando:true};
     this.btn(true);this.estado('Abriendo micro…');
     try{await this.micro()}catch(e){if(this.rec===r)this.rec=null;this.btn(false);this.nivel(0);
+      if(EN_APP&&e&&(e.name==='NotAllowedError'||e.name==='PermissionDeniedError')){this.denegado=true;this.estado('');this.diag();this.pinta();return}
       this.estado(this.inapp()?'Aquí el micro está bloqueado: abre el enlace en Safari o Chrome. El texto sí funciona.':(e&&(e.name==='NotAllowedError'||e.name==='AbortError'))?'Toca para activar el micro. Si Safari vuelve a pedir permiso, pulsa Permitir.':'No hay acceso al micro ('+(e.message||e.name)+'). El texto sí funciona.');this.diag();return}
     if(this.rec!==r)return;
     r.arrancando=false;r.t0=Date.now();this.ruido(.07,.1);this.diag();
@@ -4583,7 +4747,8 @@ const WK={
     const av=$('wkAviso'),ia=this.inapp();av.classList.toggle('on',ia);
     if(ia)av.textContent='Estás dentro de otra app (WhatsApp, Instagram…) y ahí el micrófono no funciona. Abre el enlace en Safari o Chrome. Los mensajes de texto sí funcionan.';
     const no=this.noPuede();if(!this.rec){if(no)this.estado(no);else if(this._no)this.estado('')}this._no=no;
-    $('wkPtt').disabled=!!no&&!this.rec;$('wkEnviar').disabled=!!no;$('wkTxt').disabled=!!no;
+    const off=EN_APP&&this.denegado;$('wkMicOff').hidden=!off;$('wk').classList.toggle('mic-off',off);
+    $('wkPtt').disabled=(!!no||off)&&!this.rec;$('wkEnviar').disabled=!!no;$('wkTxt').disabled=!!no;
     const h=els.length?els.map(e=>{
       const nom=`${avImg(lookOfPid(e.p),'sm')} <b>${esc(pidName(e.p,e.n))}</b>`;
       const fl=e.p!==PID?`<button class="flag" data-p="${esc(e.p)}" data-n="${esc(pidName(e.p,e.n))}" aria-label="Bloquear o reportar a ${esc(pidName(e.p,e.n))}">⚑</button>`:'';
@@ -4592,11 +4757,13 @@ const WK={
     const L=$('wkLista');if(L._h!==h){const abajo=L.scrollHeight-L.scrollTop-L.clientHeight<40;L._h=h;L.innerHTML=h;if(abajo||!L._ini){L.scrollTop=L.scrollHeight;L._ini=true}}
   },
   modo(){const cur=document.querySelector('.screen.on'),c=!!(this.abierto&&cur&&cur.id!=='s-game');$('wk').classList.toggle('compact',c);document.body.classList.toggle('wk-compact',c)},
-  abrir(){if(!(ROOM&&ROOM.remote))return;this.off=false;if(!this.enLlamada)this.entrarLlamada();this.abierto=true;$('wk').classList.add('on');ssSet('impostor-wkopen-'+wkKey(),1);this.ctx();this.diag();$('wkLista')._ini=false;this.modo();this.pinta()},
+  abrir(){if(!(ROOM&&ROOM.remote))return;this.off=false;if(!this.enLlamada)this.entrarLlamada();this.abierto=true;$('wk').classList.add('on');this.reintentaMicro();ssSet('impostor-wkopen-'+wkKey(),1);this.ctx();this.diag();$('wkLista')._ini=false;this.modo();this.pinta()},
   cerrar(){const era=this.abierto;this.abierto=false;$('wk').classList.remove('on');if(era)ssSet('impostor-wkopen-'+wkKey(),null);if(this.rec)this.para(true);this.hablando(null);this.modo();this.pinta()},
   init(){
     $('wkFab').onclick=()=>this.abrir();$('wkCerrar').onclick=()=>this.cerrar();$('wkFondo').onclick=()=>this.cerrar();
     $('wkVolver').onclick=()=>this.cerrar();
+    $('wkAjustes').onclick=async()=>{try{await window.Capacitor.Plugins.AudioSesion.abrirAjustes()}catch(e){toast('Abre Ajustes → Punto Falso → Micrófono')}};
+    document.addEventListener('visibilitychange',()=>{if(!document.hidden)this.reintentaMicro()});
     $('wkDesc').onclick=()=>{this.salirLlamada();this.cerrar()};
     const mandar=()=>{const i=$('wkTxt'),t=i.value.trim();if(!t||this.noPuede())return;
       this.chat.push({t:Date.now(),p:PID,n:myName(),txt:t});if(this.chat.length>80)this.chat.shift();this.guardaChat();bc('w',{id:uid(8),k:'txt',p:PID,nm:myName(),txt:t});i.value='';this.pinta()};
@@ -4616,6 +4783,13 @@ const WK={
   }
 };
 WK.init();
+/* App iOS: el teclado no redimensiona la página; la hoja sigue al área visible (visualViewport) para que no quede debajo */
+if(EN_APP&&window.visualViewport){
+  const vv=window.visualViewport,w=$('wk');
+  const ajusta=()=>{const kb=window.innerHeight-vv.height>100;w.classList.toggle('kb',kb);
+    if(kb){w.style.top=vv.offsetTop+'px';w.style.bottom='auto';w.style.height=vv.height+'px'}else{w.style.top=w.style.bottom=w.style.height=''}};
+  vv.addEventListener('resize',ajusta);vv.addEventListener('scroll',ajusta);
+}
 if(lsGet('impostor-micok'))$('wkMicNota').hidden=true;
 
 /* ---------- Cuenta opcional de Punto Ciego ---------- */
@@ -4881,11 +5055,11 @@ const soloWord=()=>roundInfo(SOLO.cfg,SOLO.round).word;
 function clearReveal(){const el=$('reveal');el.className='';el.innerHTML='';document.body.style.overflow=''}
 
 function soloStart(nm,cfg,voteMode){
-  if(ROOM)dropRoom();
+  descartaPend();if(ROOM)dropRoom();
   const rank={};nm.forEach((n,i)=>ensureRankEntry(rank,String(i+1),n));
   SOLO={names:nm,cfg,round:1,dead:[],voteMode,rank,phase:'deal',deal:{idx:0},vote:null,res:null};
-  game=soloGame();vibrated=0;cardKey='';
-  soloSave();lockScreen();soloDealStep();
+  game=soloGame();cardKey='';
+  soloSave();lockScreen();vibra(VIB_INI,true);soloDealStep();
 }
 function soloDealStep(){
   SOLO.phase='deal';soloSave();
@@ -4958,7 +5132,7 @@ function soloStartVote(cand,tie){
   cand=cand||soloAlive();
   /* los candidatos (a quién se puede votar) pueden ser solo los empatados, pero votan todos los vivos */
   SOLO.vote={cand,tie:!!tie,ballots:{},order:soloAlive(),idx:0};
-  SOLO.phase='vote';SOLO.voiceChoice=null;soloSave();
+  SOLO.phase='vote';SOLO.voiceChoice=null;soloSave();vibra(VIB_VOTO,true);
   if(SOLO.voteMode==='secreta')soloVoteSecretNext();else soloRenderVoiceVote();
 }
 function soloRenderVoiceVote(){
@@ -5016,8 +5190,8 @@ function soloVoteSecretPick(slot){
   });
   show('s-solo-vote');
 }
-function soloCloseVote(votesMap,alive){
-  const cr=computeVoteResult(alive,SOLO.vote.cand,SOLO.vote.tie,votesMap,SOLO.dead,soloImps());
+function soloCloseVote(votesMap,voters){
+  const cr=computeVoteResult(soloAlive(),SOLO.vote.cand,SOLO.vote.tie,votesMap,SOLO.dead,soloImps(),voters);
   const res={id:'r'+Date.now()+Math.random(),...cr};
   if(res.elim!=null){
     SOLO.dead=[...SOLO.dead,res.elim];
@@ -5090,7 +5264,7 @@ function soloAfter(){
 }
 function soloRestore(){
   const s=soloLoadSaved();if(!s)return false;
-  SOLO=s;SOLO.voiceChoice=null;game=soloGame();vibrated=0;cardKey='';lockScreen();
+  SOLO=s;SOLO.voiceChoice=null;game=soloGame();cardKey='';lockScreen();
   if(!SOLO.rank){SOLO.rank={};SOLO.names.forEach((n,i)=>ensureRankEntry(SOLO.rank,String(i+1),n))}
   if(SOLO.phase==='deal')soloDealStep();
   else if(SOLO.phase==='vote'&&SOLO.vote){
@@ -5105,8 +5279,8 @@ function soloRestore(){
 }
 
 /* ---------- Arranque ---------- */
-const cleanUrl=()=>{try{history.replaceState(null,'',location.href.split('#')[0])}catch(e){}};
-/* Enlaces: #s=CODIGO (sala en línea) o #j=... (partida sin conexión). Vale al abrir y si se vuelve a tocar un enlace en la misma pestaña. */
+const cleanUrl=()=>{try{const u=new URL(location.href);u.searchParams.delete('s');history.replaceState(null,'',u.pathname+u.search)}catch(e){}};
+/* Enlaces: ?s=CODIGO o el antiguo #s=CODIGO (sala en línea), o #j=... (partida sin conexión). Vale al abrir y si se vuelve a tocar un enlace en la misma pestaña. */
 /* Aviso de enlace antiguo: la creación con QR/enlace de "sin conexión" se sustituyó por el modo de un
    solo móvil, así que un #j= ya no se puede reconstruir salvo que sea justo la partida que ya tenías
    abierta en este móvil. */
@@ -5114,13 +5288,24 @@ function oldLinkNotice(){
   cleanUrl();show('s-home');
   sheet(`<h3>Enlace antiguo</h3><p>Este enlace es de una versión antigua. Crea una partida nueva.</p><button class="act" id="olOk">Vale</button>`,()=>{$('olOk').onclick=closeSheet});
 }
+/* Enlace de sala (?s= o #s=) -> código, o '' si no hay. Con `propio`, solo si es de puntostudio.es (los de la app llegan del sistema: no se actúa sobre cualquier URL). */
+function codigoDeEnlace(url,propio){
+  try{const u=new URL(url,location.href);if(propio&&u.hostname!=='puntostudio.es')return '';
+    const m=(u.search+u.hash).match(/[?&#]s=([0-9A-Za-z]{5})/);return m?cleanRoomCode(m[1]):''}catch(e){return ''}
+}
+/* Abrir un enlace de sala: sin partida en marcha y con nombre guardado entra directamente en la sala (el mismo camino que «Unirme»); si no, va a «Unirme» con el código puesto.
+   Con otra sala o partida abierta nunca entra solo: quien juega tiene que confirmarlo. */
+function abreSala(code,auto){
+  openJoin(code);
+  if(auto&&code&&!ROOM&&!SOLO&&!game&&$('joinName').value.trim())$('doJoin').click();
+}
 function handleLink(ret){
-  const roomHash=(location.hash.match(/#s=([0-9A-Za-z]{5})/)||[])[1];
-  const fromLink=roomHash?null:parseLink(location.hash);
-  const roomCode=roomHash?cleanRoomCode(roomHash):(ret&&ret.room)||'';
-  if(roomHash||(ret&&ret.room)){
+  const hayEnlace=/[?&#]s=/.test(location.search+location.hash);
+  const fromLink=hayEnlace?null:parseLink(location.hash);
+  const roomCode=hayEnlace?codigoDeEnlace(location.href):(ret&&ret.room)||'';
+  if(hayEnlace||(ret&&ret.room)){
     cleanUrl();
-    if(ROOM&&ROOM.code===roomCode)renderAll();else openJoin(roomCode);
+    if(ROOM&&ROOM.code===roomCode)renderAll();else abreSala(roomCode,hayEnlace||!!(ret&&ret.auto));
     return true;
   }
   const got=fromLink||ret;
@@ -5133,15 +5318,79 @@ function handleLink(ret){
   return false;
 }
 window.addEventListener('hashchange',()=>{handleLink()});
-ROOM=loadRoom();
+/* ---------- Partida guardada al abrir el juego ----------
+   La partida (sala en línea, un solo móvil o enlace antiguo) se guarda en el móvil para recuperarla si la página se recarga o el sistema
+   la reabre. Pero:
+   - Si llevas más de 5 h sin abrir el juego, se olvida y empiezas en la portada (también al volver a la app tras 5 h en segundo plano).
+   - Si se abre en frío (cerraste la app del todo, o es una pestaña nueva), empiezas en la portada con «Volver a la partida».
+   Una recarga (o que el sistema vuelva a cargar la página sola) sigue entrando directamente en la partida, como antes. */
+const CADUCA=5*3600*1000;
+var PEND=null; /* partida guardada que se ofrece en la portada: {k:'room',code} | {k:'solo'} | {k:'legacy'} */
+function marcaVivo(){if(document.hidden||VUELTA.fuera)return;lsSet('impostor-vivo',Date.now())}
+function guardada(){const r=loadRoom();if(r)return {k:'room',code:r.code,joined:+r.joined||0};if(soloLoadSaved())return {k:'solo'};if(load())return {k:'legacy'};return null}
+function olvidaGuardada(){const r=loadRoom();if(r)lsDel('impostor-s-'+r.code);lsDel('impostor-room');lsDel('impostor-solo');lsDel('impostor-v2')}
+function renderPend(){
+  const b=$('pendBox');if(!b)return;b.hidden=!PEND;if(!PEND)return;
+  $('pendTxt').innerHTML=PEND.k==='room'?`Tienes una partida a medias en la sala <b>${esc(PEND.code)}</b>.`:PEND.k==='solo'?'Tienes una partida de un solo móvil a medias.':'Tienes una partida a medias.';
+}
+/* Al empezar otra cosa (crear, unirse o jugar con un solo móvil) la partida que se ofrecía se olvida */
+function descartaPend(){if(!PEND)return;PEND=null;ssSet('impostor-pend',null);olvidaGuardada();renderPend()}
+function arrancaWalkieSala(){if(ROOM){WK.cargaChat();WK.enLlamada=ssGet('impostor-wkcall-'+ROOM.code)!==0;if(ssGet('impostor-wkopen-'+ROOM.code))WK.abrir();else WK.pinta()}}
+function retomaPend(){
+  const p=PEND;PEND=null;ssSet('impostor-pend',null);renderPend();if(!p)return;
+  if(p.k==='room'){
+    ROOM=loadRoom();if(!ROOM){show('s-home');return}
+    loadS();syncGame();NET.okAt=Date.now();netJoin(ROOM.code);arrancaWalkieSala();renderAll();
+  }else if(p.k==='solo'){if(!soloRestore())show('s-home')}
+  else{game=load();if(game)enterGame();else show('s-home')}
+}
+$('pendGo').onclick=retomaPend;
+$('pendNo').onclick=()=>{PEND=null;ssSet('impostor-pend',null);olvidaGuardada();renderPend()};
+/* Vuelta a la app tras más de 5 h fuera: se olvida la partida (sin avisar a nadie: la sala ya no sigue) y se va a la portada */
+function caducaSiVieja(){
+  const ult=lsGet('impostor-vivo',0);if(!ult||Date.now()-ult<=CADUCA)return false;
+  if(!(ROOM||SOLO||game||PEND))return false;
+  dbg('partida caducada');
+  try{if(menuOpen)closeMenu()}catch(e){}
+  try{closeSheet()}catch(e){}
+  try{if(ROOM)dropRoom()}catch(e){ROOM=null;S=null}
+  try{if(SOLO)limpiaSolo()}catch(e){SOLO=null}
+  game=null;PEND=null;ssSet('impostor-pend',null);olvidaGuardada();
+  try{clearReveal()}catch(e){}
+  phHtml='';show('s-home');
+  return true;
+}
+const ARR={frio:true};
+try{ARR.frio=!sessionStorage.getItem('impostor-sesion');sessionStorage.setItem('impostor-sesion','1')}catch(e){}
+try{const nv=performance.getEntriesByType&&performance.getEntriesByType('navigation')[0];if(nv&&(nv.type==='reload'||nv.type==='back_forward'))ARR.frio=false}catch(e){}
+{
+  const g=guardada(),ult=lsGet('impostor-vivo',0),ahora=Date.now();
+  /* Sin marca de uso (la guardó una versión anterior del juego): solo se da por vieja en frío y si la sala es de hace más de 5 h */
+  const vieja=g&&(ult?ahora-ult>CADUCA:(ARR.frio&&g.k==='room'&&g.joined&&ahora-g.joined>CADUCA));
+  if(vieja){dbg('partida guardada caducada');olvidaGuardada();ssSet('impostor-pend',null)}
+  /* en frío se ofrece en la portada; si luego la página se recarga sin haber elegido, se sigue ofreciendo (no entra sola) */
+  else if(g&&(ARR.frio||ssGet('impostor-pend'))){PEND=g;ssSet('impostor-pend',1)}
+  else ssSet('impostor-pend',null);
+}
+marcaVivo();setInterval(marcaVivo,20000);
+ROOM=PEND?null:loadRoom();
 let soloRestored=false;
-if(ROOM){loadS();syncGame();netJoin(ROOM.code)}else if(!(soloRestored=soloRestore()))game=load();
+if(PEND){}
+else if(ROOM){loadS();syncGame();NET.okAt=Date.now();netJoin(ROOM.code)}else if(!(soloRestored=soloRestore()))game=load();
 let ret=null;
-if(!/#(s|j)=/.test(location.hash)){const r=lsGet('impostor-ret');if(r){lsDel('impostor-ret');ret=r.includes('#s=')?{room:codeFromInput(r)}:parseLink(r)}}
+if(!/#(s|j)=/.test(location.hash)&&!/[?&]s=/.test(location.search)){const r=lsGet('impostor-ret');if(r){lsDel('impostor-ret');ret=/[?&#]s=/.test(r)?{room:codeFromInput(r)}:parseLink(r)}}
 if(!handleLink(ret)){
   if(ROOM)renderAll();else if(soloRestored){}else if(game)enterGame();else show('s-home');
 }
-if(ROOM){WK.cargaChat();WK.enLlamada=ssGet('impostor-wkcall-'+ROOM.code)!==0;if(ssGet('impostor-wkopen-'+ROOM.code))WK.abrir();else WK.pinta()}
+/* App nativa: el sistema abre la app con el enlace (Universal Links en iOS, App Links en Android). Con la app abierta llega appUrlOpen; en un arranque en frío,
+   getLaunchUrl. El mismo enlace puede llegar por los dos caminos: el segundo, en menos de 3 s, se ignora. */
+try{const AP=EN_APP&&window.Capacitor.Plugins&&window.Capacitor.Plugins.App;if(AP){
+  let ultEnl={c:'',t:0};
+  const abreEnlace=url=>{const c=codigoDeEnlace(url,true);if(!c||(c===ultEnl.c&&Date.now()-ultEnl.t<3000))return;ultEnl={c,t:Date.now()};handleLink({room:c,auto:true})};
+  if(AP.addListener)AP.addListener('appUrlOpen',e=>abreEnlace(e&&e.url));
+  if(AP.getLaunchUrl)Promise.resolve(AP.getLaunchUrl()).then(r=>r&&r.url&&abreEnlace(r.url)).catch(()=>{});
+}}catch(e){console.warn('enlaces',e)}
+arrancaWalkieSala();
 renderAcct();avLoad();iniciaCuentas();
 setInterval(tick,1000);
 setInterval(()=>{if(iAmHost()&&NET.resumed&&netUp()&&S)bc('st',S)},8000); /* latido: repara mensajes perdidos */
@@ -5158,6 +5407,6 @@ if('serviceWorker' in navigator)window.addEventListener('load',()=>{
   }).catch(()=>{});
 });
 </script>
-<div id="betaTag" aria-hidden="true" style="position:fixed;left:8px;bottom:calc(6px + env(safe-area-inset-bottom,0px));z-index:9999;font:700 10px/1 system-ui,sans-serif;letter-spacing:.14em;color:#fff;background:#ff4637;padding:3px 6px;border-radius:4px;opacity:.85;pointer-events:none">BETA v27</div>
+<div id="betaTag" aria-hidden="true" style="position:fixed;left:8px;bottom:calc(6px + env(safe-area-inset-bottom,0px));z-index:9999;font:700 10px/1 system-ui,sans-serif;letter-spacing:.14em;color:#fff;background:#ff4637;padding:3px 6px;border-radius:4px;opacity:.85;pointer-events:none">BETA v28</div>
 </body>
 </html>
