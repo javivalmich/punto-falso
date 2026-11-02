@@ -94,6 +94,11 @@ body.red .act.sec{background:transparent;border-color:rgba(255,255,255,.55)}
 .tag{color:var(--red);font-weight:600;letter-spacing:.04em;font-size:clamp(.68rem,3.6vw,.82rem);margin-top:8px;white-space:nowrap}
 .lead{color:var(--muted);text-align:center;margin:18px auto 8px;max-width:30ch;font-size:1.05rem}
 .panel{background:var(--surface);border:1px solid var(--line);border-radius:20px;padding:6px 18px;margin:16px 0}
+.pend{background:var(--surface);border:1px solid var(--line);border-radius:20px;padding:16px 18px 4px;margin:16px 0 4px;text-align:center}
+.pend[hidden]{display:none}
+.pend p{color:var(--muted);margin:0 0 4px}
+.pend p b{color:var(--text)}
+.pend .link{margin-top:4px}
 details{padding:10px 0}
 summary{font-weight:800;cursor:pointer;list-style:none;display:flex;justify-content:space-between}
 summary::-webkit-details-marker{display:none}
@@ -461,6 +466,7 @@ html.en-app #wk.kb :is(.wk-call,#wkVolver,#wkDesc,#wkAviso,#wkMicNota,#wkDiag,#w
       <p class="tag">EL JUEGO SOCIAL DEL IMPOSTOR</p>
     </div>
     <p class="lead">Todos tenéis la misma palabra menos el impostor. Cada uno la ve en su móvil.</p>
+    <div class="pend" id="pendBox" hidden><p id="pendTxt"></p><button class="act" id="pendGo">Volver a la partida</button><button class="link" id="pendNo">Descartarla</button></div>
     <button class="act" id="goCreate">Crear partida</button>
     <button class="act sec" id="goJoin">Unirme</button>
     <button class="act sec" id="goCreateOff">Jugar con un solo móvil</button>
@@ -3188,6 +3194,7 @@ function show(id){
   document.querySelector('.wrap').classList.toggle('game',WKS.includes(id));
   $('wkFab').classList.toggle('on',wk);document.body.classList.toggle('wk-fab',wk);
   if(!wk){WK.cerrar();WK.soltar()}else WK.modo();
+  if(id==='s-home')renderPend();
 }
 document.querySelectorAll('[data-go]').forEach(b=>b.onclick=()=>show(b.dataset.go));
 /* Efecto al pulsar en táctil: pone .prs en el botón al tocar (iOS no siempre aplica :active) y lo mantiene 120 ms para que se vea.
@@ -3195,7 +3202,7 @@ document.querySelectorAll('[data-go]').forEach(b=>b.onclick=()=>show(b.dataset.g
 (()=>{
   const SEL='button';
   const NOEXC='.google,.apple,.link,.chip,.switch,.seg button,.step button,.xbtn,.names .nm button,.grid button';
-  const NODELAY='#wkPtt,.step button,.flag,.kick,.blk,.wk-m button[data-i],.names .nm button';
+  const NODELAY='#wkPtt,.step button,.flag,.kick,.blk,.wk-m button[data-i],.names .nm button,#sheet .vbtn';
   const T=120,NAV=100;let cur=null; /* visible al menos 120 ms; antes de navegar, ~100 ms de estado oscuro */
   const quita=(b,t0)=>setTimeout(()=>b.classList.remove('prs'),Math.max(0,T-(Date.now()-t0)));
   document.addEventListener('touchstart',()=>{},{passive:true});
@@ -3215,7 +3222,7 @@ document.querySelectorAll('[data-go]').forEach(b=>b.onclick=()=>show(b.dataset.g
 
 let toastT;
 function toast(msg){const t=$('toast');t.textContent=msg;t.classList.add('on');clearTimeout(toastT);toastT=setTimeout(()=>t.classList.remove('on'),2600)}
-function sheet(html,bind){$('sheet').innerHTML=html;$('overlay').classList.add('on');bind&&bind();const f=$('sheet').querySelector('button,input');f&&f.focus()}
+function sheet(html,bind){$('sheet')._voto=null;$('sheet').innerHTML=html;$('overlay').classList.add('on');bind&&bind();const f=$('sheet').querySelector('button,input');f&&f.focus()}
 function closeSheet(){$('overlay').classList.remove('on')}
 $('overlay').addEventListener('click',e=>{if(e.target.id==='overlay')closeSheet()});
 
@@ -3324,12 +3331,17 @@ const roomLink=code=>location.origin+location.pathname+'?s='+code; /* enlace de 
 function saveRoom(){if(ROOM)lsSet('impostor-room',ROOM);else lsDel('impostor-room')}
 function loadRoom(){const r=lsGet('impostor-room');return r&&cleanRoomCode(r.code)&&typeof r.name==='string'&&r.name?r:null}
 
-const NET={lastSt:0,lastReq:0,lastTrack:'',ch:null,code:null,st:'off',cid:uid(8),t:Date.now(),grace:0,goneAt:0,resumed:false,hostSeen:false,downAt:0,R:{}};
+const NET={lastSt:0,lastReq:0,lastTrack:'',ch:null,code:null,st:'off',cid:uid(8),t:Date.now(),grace:0,goneAt:0,resumed:false,hostSeen:false,downAt:0,R:{},okAt:0,desde:0,cedeDesde:0};
 const netUp=()=>NET.st==='up';
+/* Gracia de reconexión: un corte corto (bloquear el móvil, cambiar de app, mala cobertura) no saca a nadie de la partida en línea.
+   Mientras se reconecta, la partida sigue en modo sala (votación, revelación…) con «Reconectando…»; solo si el corte dura más de
+   NET_GRACIA se pasa al modo sin conexión (votar en voz alta), como antes. */
+const NET_GRACIA=45000;
+const salaViva=()=>netUp()||(!!NET.code&&!!NET.okAt&&Date.now()-NET.okAt<NET_GRACIA);
 async function netJoin(code){
   if(NET.code===code&&(NET.ch||NET.st==='connecting'))return;
   netLeave();
-  NET.code=code;NET.st='connecting';NET.resumed=false;NET.hostSeen=false;NET.lastTrack='';renderAll();
+  NET.code=code;NET.st='connecting';NET.desde=Date.now();NET.resumed=false;NET.hostSeen=false;NET.lastTrack='';renderAll();
   let sb;try{sb=await loadSB()}catch(e){if(NET.code===code){NET.st='off';renderAll()}return}
   if(NET.code!==code||NET.ch)return;
   purgaCanales(sb,'impostor-'+code);
@@ -3342,7 +3354,7 @@ async function netJoin(code){
   ch.on('presence',{event:'sync'},onPresence);
   ch.subscribe(status=>{
     if(NET.ch!==ch)return;
-    if(status==='SUBSCRIBED'){NET.st='up';NET.downAt=0;NET.lastSt=Date.now();NET.grace=Date.now()+1600;NET.resumed=false;NET.hostSeen=false;NET.lastTrack='';dbg('SUBSCRIBED');netTrack();bc('req',{});renderAll()}
+    if(status==='SUBSCRIBED'){NET.st='up';NET.downAt=0;NET.okAt=Date.now();NET.lastSt=Date.now();NET.grace=Date.now()+1600;NET.resumed=false;NET.cedeDesde=0;NET.hostSeen=false;NET.lastTrack='';dbg('SUBSCRIBED');netTrack();bc('req',{});renderAll()}
     else if(status==='CHANNEL_ERROR'||status==='TIMED_OUT'||status==='CLOSED'){if(NET.st!=='down'){NET.st='down';NET.downAt=Date.now()}renderAll()}
   });
 }
@@ -3528,6 +3540,9 @@ function tick(){
   if(!ROOM)return;
   const now=Date.now();
   if(NET.code&&NET.st==='down'&&NET.downAt&&now-NET.downAt>3000){NET.downAt=now;hardReconnect();return}
+  /* conexión que se queda a medias («Conectando…» sin respuesta, o la librería no carga): se vuelve a intentar */
+  if(NET.code&&(NET.st==='connecting'||NET.st==='off')&&NET.desde&&now-NET.desde>(NET.st==='connecting'?15000:10000)){dbg('conexión atascada: reconecto');hardReconnect();return}
+  if(netUp())NET.okAt=now;
   if(!netUp()||now<NET.grace)return;
   const R=roster();NET.R=R;
   if(!R[PID]){
@@ -3537,7 +3552,14 @@ function tick(){
     return;
   }
   NET.sinYo=0;
-  if(iAmHost()){if(!NET.resumed){NET.resumed=true;resumeHost()}}
+  if(iAmHost()){if(!NET.resumed){
+    /* Vuelvo siendo el anfitrión, pero otro jugador ha tomado el relevo mientras no estaba (móvil bloqueado, otra app…): no se pisa
+       su estado con el mío, que es viejo. Se le pide el suyo y, al llegar (época mayor), dejo de ser el anfitrión. Si en 10 s no llega
+       nada, sigo yo como antes. */
+    const otro=Object.values(R).some(e=>e.h&&e.p!==PID&&!e.w);
+    if(otro){if(!NET.cedeDesde)NET.cedeDesde=now;if(now-NET.cedeDesde<10000){if(now-NET.lastReq>2500){NET.lastReq=now;bc('req',{})}return}}
+    NET.cedeDesde=0;NET.resumed=true;resumeHost();
+  }}
   else{
     if(hostPresent(R))NET.goneAt=0;
     else{
@@ -3564,7 +3586,7 @@ function tick(){
 /* ---------- Acciones del anfitrión ---------- */
 const aliveList=()=>{const a=[];for(let i=1;i<=S.pl.length;i++)if(!S.dead.includes(i)&&!S.left.includes(i))a.push(i);return a};
 const isDead=()=>!!(S&&game&&S.dead.includes(game.me));
-const mode=()=>(ROOM&&game&&netUp()&&S&&S.ph!=='lobby')?'room':'solo';
+const mode=()=>(ROOM&&game&&salaViva()&&S&&S.ph!=='lobby')?'room':'solo';
 const impsNow=()=>roundInfo(S.cfg,S.round).imps;
 const takenNames=()=>[...(S.pl||[]),...S.pend,...S.acc].map(p=>p.n.toLowerCase());
 function uniqueName(n,taken){let b=cleanName(n)||'Jugador',x=b,i=2;while(taken.includes(x.toLowerCase()))x=b.slice(0,12)+i++;return x}
@@ -3727,7 +3749,10 @@ function castVote(to){
 /* Cualquiera puede pasar a votar (no solo el anfitrión) */
 function castStartVote(){
   if(!S||S.ph!=='word'||!game)return;
-  if(iAmHost())hStartVote(aliveList(),false);else bc('act',{k:'startVote'});
+  if(iAmHost()){hStartVote(aliveList(),false);return}
+  bc('act',{k:'startVote'});
+  const ref=S.ep+'.'+S.sq; /* solo si no ha llegado ningún estado nuevo desde entonces (si el anfitrión la abrió y la canceló, no se reabre) */
+  setTimeout(()=>{if(ROOM&&S&&!iAmHost()&&S.ph==='word'&&S.ep+'.'+S.sq===ref)bc('act',{k:'startVote'})},2500);
 }
 /* El anfitrión que se va pasa el puesto al siguiente jugador conectado, sin esperar a que lo releven por ausencia */
 function hCedeHost(){
@@ -3825,7 +3850,8 @@ function renderNet(){
     on=true;
     if(S&&S.pl){const R=NET.R||{};const n=S.pl.filter(p=>R[p.p]&&!R[p.p].w).length;t=`En línea · ${n} de ${S.pl.length} conectados`}
     else t='Conectado · esperando al anfitrión…';
-  }else if(NET.st==='connecting')t='Conectando…';
+  }else if(game&&mode()==='room')t='Reconectando…';
+  else if(NET.st==='connecting')t='Conectando…';
   else t='Sin conexión: votad en voz alta';
   const h=(on?'1':'0')+t;if(el._h===h)return;el._h=h;
   el.innerHTML='<span class="dot'+(on?'':' off')+'"></span><span></span>';el.lastChild.textContent=t;
@@ -3861,12 +3887,18 @@ function renderPhase(){
     h=`<div class="phase"><div class="pt">Mirad vuestra tarjeta</div><p>Mantén pulsada la tarjeta para ver tu palabra. ${starter}</p>`+
       `<button class="act host" data-a="startVote">Pasar a votar</button>`+
       (host?`<button class="link" data-a="skip">Saltar a la siguiente ronda</button>`:'')+`</div>`;
+  }else if(room&&S.ph==='vote'&&S.vt){
+    /* La votación va en una hoja que se puede cerrar (tocando fuera, con «atrás» o para usar el walkie): aquí queda el acceso para volver a ella */
+    const voted=S.vt.voted.length,total=aliveList().length;
+    h=`<div class="phase"><div class="pt">Votación abierta</div><p>${voted} de ${total} han votado.</p>`+
+      `<button class="act host" data-a="openVote">${isDead()?'Ver la votación':'Ir a la votación'}</button></div>`;
   }
   if(h!==phHtml){phHtml=h;box.innerHTML=h}
 }
 $('phaseBox').addEventListener('click',e=>{
   const b=e.target.closest('[data-a]');if(!b||!game||!S)return;const a=b.dataset.a;
   if(a==='startVote')castStartVote();
+  else if(a==='openVote'){voteSheetMode='list';voteHtml='';renderVoteSheet()}
   else if(a==='skip'&&iAmHost())sheet(`<h3>¿Siguiente ronda?</h3><p>Se cierra esta ronda y todos pasan a una palabra nueva.</p>
     <button class="act" id="skYes">Siguiente ronda</button><button class="link" id="skNo">Cancelar</button>`,()=>{
     $('skNo').onclick=closeSheet;$('skYes').onclick=()=>{closeSheet();if(iAmHost())hNextRound()};
@@ -3884,7 +3916,18 @@ function renderVoteSheet(){
   voteSheetShown=true;
   const h=S.prop?proposeHtml():(voteSheetMode==='peek'?votePeekHtml():voteListHtml());
   if(h===voteHtml)return;
-  voteHtml=h;sheet(h);
+  if(voteHtml&&$('overlay').classList.contains('on')&&$('sheet')._voto===voteHtml&&mismaHoja(h,voteHtml)){parcheaHoja(h);voteHtml=h;$('sheet')._voto=h;return}
+  voteHtml=h;sheet(h);$('sheet')._voto=h;
+}
+/* Dos versiones de la hoja de votación que solo cambian en el recuento («X de N han votado») y en qué botón está marcado */
+const hojaBase=h=>h.replace(/<div class="vprog">.*?<\/span><\/div>/g,'').replace(/class="vbtn on"/g,'class="vbtn"').replace(/ aria-pressed="(true|false)"/g,'');
+const mismaHoja=(a,b)=>hojaBase(a)===hojaBase(b);
+function parcheaHoja(h){
+  const t=document.createElement('template');t.innerHTML=h;const el=$('sheet');
+  const pv=el.querySelectorAll('.vprog'),nv=t.content.querySelectorAll('.vprog');
+  pv.forEach((x,i)=>{if(nv[i]&&x.innerHTML!==nv[i].innerHTML)x.innerHTML=nv[i].innerHTML});
+  const pb=el.querySelectorAll('[aria-pressed]'),nb=t.content.querySelectorAll('[aria-pressed]');
+  pb.forEach((x,i)=>{const n=nb[i];if(!n)return;x.classList.toggle('on',n.classList.contains('on'));x.setAttribute('aria-pressed',n.getAttribute('aria-pressed'))});
 }
 function voteListHtml(){
   const vt=S.vt,dead=isDead(),alive=aliveList(),host=iAmHost();
@@ -4038,7 +4081,7 @@ $('doCreateRoom').onclick=async()=>{
   if(!rs.mask)return;
   err.textContent='';btn.disabled=true;btn.textContent='Creando la sala…';
   try{
-    limpiaSolo();if(ROOM)dropRoom();
+    descartaPend();limpiaSolo();if(ROOM)dropRoom();
     for(let i=0;i<6;i++){
       const code=newRoomCode();S=null;
       const ok=await netJoinWait(code);
@@ -4070,7 +4113,7 @@ async function doJoinRoom(codeRaw,nameRaw){
   if(!code)return 'Ese código no es válido. Son 5 letras o números (sin 0, O, 1, I ni L).';
   let name=cleanName(nameRaw);
   if(!name)return 'Escribe tu nombre (de 1 a 14 caracteres).';
-  limpiaSolo();if(ROOM)dropRoom();
+  descartaPend();limpiaSolo();if(ROOM)dropRoom();
   S=null;
   /* Hasta 3 intentos: si el canal cae (channel_crash) o la presencia llega vacía, se reconecta y se vuelve a esperar antes de decir que la sala no existe */
   for(let intento=1;;intento++){
@@ -4401,10 +4444,11 @@ async function lockScreen(){try{if((game||ROOM)&&navigator.wakeLock&&!WL){WL=awa
    «joined» sin estarlo. Si el canal no está unido, o se ha estado fuera más de 3 s, se reconecta de cero (la recuperación de channel_crash se encarga del resto:
    volver a registrar la presencia, pedir el estado, relevar al anfitrión). Los dos eventos pueden llegar juntos: el segundo, en menos de 0,8 s, se ignora. */
 const VUELTA={fuera:0,ult:0};
-function alIrse(){if(!VUELTA.fuera)VUELTA.fuera=Date.now()}
+function alIrse(){if(!VUELTA.fuera){lsSet('impostor-vivo',Date.now());VUELTA.fuera=Date.now()}}
 function alVolver(){
   const t=VUELTA.fuera;VUELTA.fuera=0;
   if(Date.now()-VUELTA.ult<800)return;VUELTA.ult=Date.now();
+  const caducada=caducaSiVieja();marcaVivo();if(caducada)return;
   lockScreen();
   if(!NET.code)return;
   if(!NET.ch||NET.ch.state!=='joined'||(t&&Date.now()-t>3000)){dbg('vuelta: reconecto');hardReconnect()}
@@ -4981,7 +5025,7 @@ const soloWord=()=>roundInfo(SOLO.cfg,SOLO.round).word;
 function clearReveal(){const el=$('reveal');el.className='';el.innerHTML='';document.body.style.overflow=''}
 
 function soloStart(nm,cfg,voteMode){
-  if(ROOM)dropRoom();
+  descartaPend();if(ROOM)dropRoom();
   const rank={};nm.forEach((n,i)=>ensureRankEntry(rank,String(i+1),n));
   SOLO={names:nm,cfg,round:1,dead:[],voteMode,rank,phase:'deal',deal:{idx:0},vote:null,res:null};
   game=soloGame();cardKey='';
@@ -5244,9 +5288,65 @@ function handleLink(ret){
   return false;
 }
 window.addEventListener('hashchange',()=>{handleLink()});
-ROOM=loadRoom();
+/* ---------- Partida guardada al abrir el juego ----------
+   La partida (sala en línea, un solo móvil o enlace antiguo) se guarda en el móvil para recuperarla si la página se recarga o el sistema
+   la reabre. Pero:
+   - Si llevas más de 5 h sin abrir el juego, se olvida y empiezas en la portada (también al volver a la app tras 5 h en segundo plano).
+   - Si se abre en frío (cerraste la app del todo, o es una pestaña nueva), empiezas en la portada con «Volver a la partida».
+   Una recarga (o que el sistema vuelva a cargar la página sola) sigue entrando directamente en la partida, como antes. */
+const CADUCA=5*3600*1000;
+var PEND=null; /* partida guardada que se ofrece en la portada: {k:'room',code} | {k:'solo'} | {k:'legacy'} */
+function marcaVivo(){if(document.hidden||VUELTA.fuera)return;lsSet('impostor-vivo',Date.now())}
+function guardada(){const r=loadRoom();if(r)return {k:'room',code:r.code,joined:+r.joined||0};if(soloLoadSaved())return {k:'solo'};if(load())return {k:'legacy'};return null}
+function olvidaGuardada(){const r=loadRoom();if(r)lsDel('impostor-s-'+r.code);lsDel('impostor-room');lsDel('impostor-solo');lsDel('impostor-v2')}
+function renderPend(){
+  const b=$('pendBox');if(!b)return;b.hidden=!PEND;if(!PEND)return;
+  $('pendTxt').innerHTML=PEND.k==='room'?`Tienes una partida a medias en la sala <b>${esc(PEND.code)}</b>.`:PEND.k==='solo'?'Tienes una partida de un solo móvil a medias.':'Tienes una partida a medias.';
+}
+/* Al empezar otra cosa (crear, unirse o jugar con un solo móvil) la partida que se ofrecía se olvida */
+function descartaPend(){if(!PEND)return;PEND=null;ssSet('impostor-pend',null);olvidaGuardada();renderPend()}
+function arrancaWalkieSala(){if(ROOM){WK.cargaChat();WK.enLlamada=ssGet('impostor-wkcall-'+ROOM.code)!==0;if(ssGet('impostor-wkopen-'+ROOM.code))WK.abrir();else WK.pinta()}}
+function retomaPend(){
+  const p=PEND;PEND=null;ssSet('impostor-pend',null);renderPend();if(!p)return;
+  if(p.k==='room'){
+    ROOM=loadRoom();if(!ROOM){show('s-home');return}
+    loadS();syncGame();NET.okAt=Date.now();netJoin(ROOM.code);arrancaWalkieSala();renderAll();
+  }else if(p.k==='solo'){if(!soloRestore())show('s-home')}
+  else{game=load();if(game)enterGame();else show('s-home')}
+}
+$('pendGo').onclick=retomaPend;
+$('pendNo').onclick=()=>{PEND=null;ssSet('impostor-pend',null);olvidaGuardada();renderPend()};
+/* Vuelta a la app tras más de 5 h fuera: se olvida la partida (sin avisar a nadie: la sala ya no sigue) y se va a la portada */
+function caducaSiVieja(){
+  const ult=lsGet('impostor-vivo',0);if(!ult||Date.now()-ult<=CADUCA)return false;
+  if(!(ROOM||SOLO||game||PEND))return false;
+  dbg('partida caducada');
+  try{if(menuOpen)closeMenu()}catch(e){}
+  try{closeSheet()}catch(e){}
+  try{if(ROOM)dropRoom()}catch(e){ROOM=null;S=null}
+  try{if(SOLO)limpiaSolo()}catch(e){SOLO=null}
+  game=null;PEND=null;ssSet('impostor-pend',null);olvidaGuardada();
+  try{clearReveal()}catch(e){}
+  phHtml='';show('s-home');
+  return true;
+}
+const ARR={frio:true};
+try{ARR.frio=!sessionStorage.getItem('impostor-sesion');sessionStorage.setItem('impostor-sesion','1')}catch(e){}
+try{const nv=performance.getEntriesByType&&performance.getEntriesByType('navigation')[0];if(nv&&(nv.type==='reload'||nv.type==='back_forward'))ARR.frio=false}catch(e){}
+{
+  const g=guardada(),ult=lsGet('impostor-vivo',0),ahora=Date.now();
+  /* Sin marca de uso (la guardó una versión anterior del juego): solo se da por vieja en frío y si la sala es de hace más de 5 h */
+  const vieja=g&&(ult?ahora-ult>CADUCA:(ARR.frio&&g.k==='room'&&g.joined&&ahora-g.joined>CADUCA));
+  if(vieja){dbg('partida guardada caducada');olvidaGuardada();ssSet('impostor-pend',null)}
+  /* en frío se ofrece en la portada; si luego la página se recarga sin haber elegido, se sigue ofreciendo (no entra sola) */
+  else if(g&&(ARR.frio||ssGet('impostor-pend'))){PEND=g;ssSet('impostor-pend',1)}
+  else ssSet('impostor-pend',null);
+}
+marcaVivo();setInterval(marcaVivo,20000);
+ROOM=PEND?null:loadRoom();
 let soloRestored=false;
-if(ROOM){loadS();syncGame();netJoin(ROOM.code)}else if(!(soloRestored=soloRestore()))game=load();
+if(PEND){}
+else if(ROOM){loadS();syncGame();NET.okAt=Date.now();netJoin(ROOM.code)}else if(!(soloRestored=soloRestore()))game=load();
 let ret=null;
 if(!/#(s|j)=/.test(location.hash)&&!/[?&]s=/.test(location.search)){const r=lsGet('impostor-ret');if(r){lsDel('impostor-ret');ret=/[?&#]s=/.test(r)?{room:codeFromInput(r)}:parseLink(r)}}
 if(!handleLink(ret)){
@@ -5260,7 +5360,7 @@ try{const AP=EN_APP&&window.Capacitor.Plugins&&window.Capacitor.Plugins.App;if(A
   if(AP.addListener)AP.addListener('appUrlOpen',e=>abreEnlace(e&&e.url));
   if(AP.getLaunchUrl)Promise.resolve(AP.getLaunchUrl()).then(r=>r&&r.url&&abreEnlace(r.url)).catch(()=>{});
 }}catch(e){console.warn('enlaces',e)}
-if(ROOM){WK.cargaChat();WK.enLlamada=ssGet('impostor-wkcall-'+ROOM.code)!==0;if(ssGet('impostor-wkopen-'+ROOM.code))WK.abrir();else WK.pinta()}
+arrancaWalkieSala();
 renderAcct();avLoad();iniciaCuentas();
 setInterval(tick,1000);
 setInterval(()=>{if(iAmHost()&&NET.resumed&&netUp()&&S)bc('st',S)},8000); /* latido: repara mensajes perdidos */

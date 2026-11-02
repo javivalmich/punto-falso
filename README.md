@@ -11,6 +11,7 @@ Jugar: https://puntostudio.es/punto-falso/ (portada de Punto Studio: https://pun
 - Quien entra con la partida empezada espera: el anfitrión recibe un aviso para aceptarlo y entra al pasar de ronda.
 - Cada uno mantiene pulsada su tarjeta para ver su palabra. Si la pantalla se pone roja, es el impostor. Hay tres niveles de pista, elegidos al crear la partida: sin pista, solo el nombre de la categoría (el nivel por defecto) o una pista vaga (una palabra suelta, floja a propósito, que vale para varias palabras de esa categoría, no solo la suya).
 - Ronda: **palabra → votación → resultado**. Cuando queráis, cualquiera pulsa «Pasar a votar» y se abre un recuadro con la votación para todos a la vez; cada uno vota en su móvil (no a sí mismo, y se puede cambiar hasta que voten todos). Se ve cuántos han votado, no a quién. El anfitrión puede cancelar una votación abierta por error, y solo él puede cerrarla.
+  La votación va en una hoja que se puede cerrar (tocando fuera, con «atrás» o para usar el walkie); mientras siga abierta, en la pantalla queda «Votación abierta · X de N han votado» con el botón «Ir a la votación». Los votos que van llegando solo actualizan el recuento y la marca de la hoja, sin rehacer los botones, para que no se pierda un toque a medias.
 - Al cerrar, se descubre al más votado en todas las pantallas. Si era impostor y no quedan más, ganan los inocentes; si los impostores igualan a los inocentes, ganan ellos. Si empatan, se repite entre los empatados y, si vuelven a empatar, nadie sale. Los eliminados miran y escuchan, pero no votan ni hablan hasta la siguiente ronda. La partida pasa sola a la siguiente ronda tras una cuenta atrás de unos segundos; el anfitrión puede acelerarlo («Ir ya») o terminar la partida y volver todos a la sala de espera.
 - Hay un marcador de la sesión (victorias y veces que ha sido impostor cada uno).
 - Se puede **salir de la partida en cualquier momento** con el botón (✕) fijo en la esquina. Si sales, desapareces de la sala y del recuento de la votación en curso; si erais menos de 3 tras salir tú, la ronda se corta y el resto vuelve a la sala de espera.
@@ -38,11 +39,13 @@ En la sala de espera, junto a cada jugador, «Bloquear», y con ⚑ junto a los 
 ## Cómo funciona por dentro
 
 - Al empezar, el anfitrión fija la lista de jugadores y genera la semilla, y las envía con los ajustes. La palabra y los impostores de cada ronda se calculan en cada móvil a partir de esa lista, esa semilla y el número de ronda; **no viaja por red quién es impostor**.
+- **Partida guardada**: la partida (en línea o de un solo móvil) se guarda en el móvil. Al recargar (o si el sistema vuelve a cargar la página solo) se entra directamente en ella. Si se abre en frío (la app cerrada del todo, o una pestaña nueva), se empieza en la portada con «Tienes una partida a medias… Volver a la partida / Descartarla»; crear, unirse o jugar con un solo móvil la descarta. Si llevas más de 5 h sin abrir el juego (`CADUCA`, marca `impostor-vivo`), se olvida: tanto al abrirlo como al volver a la app tras 5 h en segundo plano.
 - Cada móvil tiene un identificador fijo (PID) guardado en el navegador: al recargar vuelve a su sitio con su nombre, y el walkie identifica a quien habla por ese PID (no por el número de jugador). Si el mismo jugador se abre en otra pestaña, la antigua se aparta.
 - Lo compartido (fase, ronda, eliminados, quién ha votado, resultado) lo decide el anfitrión y se difunde por **Supabase Realtime** (un canal por sala, `impostor-<CÓDIGO>`, con broadcast y presence, con la clave publicable, sin cuenta; no usa tablas). Los demás solo envían acciones (su voto).
 - Si el anfitrión se desconecta más de 30 s (también en la sala de espera), pasa a serlo el siguiente jugador conectado según el orden de la lista (en la sala, el que entró antes).
 - El código solo sirve para encontrar la sala; antes de darlo por bueno se comprueba por presencia que no hay otra sala con él.
-- Si una sala en línea pierde la conexión a mitad de partida, cada móvil sigue con lo que tiene de la misma forma.
+- Si una sala en línea pierde la conexión a mitad de partida (móvil bloqueado, cambiar de app, mala cobertura), durante 45 s (`NET_GRACIA`) la partida sigue en modo sala con «Reconectando…»: la votación y la revelación siguen en pantalla y el voto se reenvía al volver la conexión. Solo si el corte dura más pasa al modo sin conexión (votar en voz alta y «Ver solución»), como antes. Una conexión que se queda en «Conectando…» se reintenta sola.
+- Si el anfitrión vuelve después de que otro jugador lo haya relevado, no pisa la partida con su estado viejo: pide el del nuevo anfitrión y deja de serlo (si en 10 s no le llega nada, sigue él).
 - Los votos los ve el anfitrión en su móvil; por el canal pasan como mensajes (no se muestran a nadie). El canal no está cifrado: cualquiera que tenga el código de partida puede unirse. Es un juego entre amigos.
 
 ## Un solo móvil (sin conexión)
@@ -78,6 +81,8 @@ Los cambios se hacen en `beta/`, se prueban en el móvil y, cuando están bien, 
 ## Pruebas
 
 `npm test` ejecuta las pruebas de Playwright del modo de un solo móvil (`tests/`): partidas completas con voto en voz alta y voto secreto, empates, victorias de cada bando, «volver a ver mi palabra», recuperar la partida al recargar y que no haya peticiones de red durante la partida. `npx playwright test tests/screenshots.spec.js` guarda capturas de esas pantallas en varios tamaños de móvil en `test-results/screenshots/`.
+
+`tests/arreglos-partida.spec.js` (con la red falsa de `tests/fake-red.js`) cubre los arreglos de noviembre de 2026: la hoja de votación que se cierra y se recupera, un toque de voto que no se pierde aunque voten los demás a la vez, la gracia de reconexión, el anfitrión que vuelve sin pisar al nuevo y la partida guardada (recarga, arranque en frío con «Volver a la partida», caducidad de 5 h). Con `TEST_PATH=/beta/` prueba la copia beta.
 
 ## Avisos
 

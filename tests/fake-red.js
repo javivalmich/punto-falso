@@ -85,6 +85,10 @@ async function creaSala(page, nombre, { walkie = false } = {}) {
 
 async function unirse(page, codigo, nombre) {
   await page.click('#goJoin');
+  // «Unirme» se abre ~100 ms después del toque (efecto al pulsar) y a los 50 ms pone el foco en el código: se espera a eso antes de
+  // escribir, o el foco puede saltar a mitad de escribir el nombre y acabar en el campo del código («RUEARAna»).
+  await page.locator('#s-join.on').waitFor();
+  await page.waitForTimeout(120);
   await page.fill('#codeIn', codigo);
   await page.fill('#joinName', nombre);
   await page.click('#doJoin');
